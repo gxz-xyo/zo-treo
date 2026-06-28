@@ -10,7 +10,7 @@ from requests_oauthlib import OAuth2Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-# Đã fix lỗi văng đăng nhập bằng cách dùng khóa cố định thay vì random
+# Khóa cố định chống văng session
 app.secret_key = "za_tools_secret_key_v7_bat_tu_cua_dangkhoi"
 
 # Cho phép chạy luồng OAuth2 qua HTTP trên Render
@@ -25,7 +25,7 @@ try:
     accounts_collection = db["accounts"]
     users_collection = db["users"]
     client.server_info()
-    print("✅ Kết nối tới MongoDB Atlas thành công! Đã loại bỏ Google, kích hoạt V7 Clean.")
+    print("✅ Kết nối tới MongoDB Atlas thành công! Đã loại bỏ Google, kích hoạt V8 Clean.")
 except Exception as e:
     print(f"💥 Lỗi kết nối dữ liệu: {e}")
 
@@ -376,9 +376,8 @@ def run_bot(bot_key, config, username):
     start_ws()
 
 # ================== BỘ KHỞI ĐỘNG TỰ ĐỘNG (AUTO-BOOTLOADER) ==================
-# Sửa lỗi: Render tự tắt server rồi bật lại qua ping, bot bị ngủm do ko ai đăng nhập web
 def auto_bootloader():
-    print("🔄 Kích hoạt Bootloader: Đang khôi phục toàn bộ tiến trình từ Cloud...")
+    print("🔄 Kích hoạt Bootloader: Khôi phục tiến trình từ Cloud...")
     try:
         for doc in accounts_collection.find():
             username = doc.get("owner")
@@ -393,11 +392,10 @@ def auto_bootloader():
             if username not in user_bots: user_bots[username] = {}
             if bot_key not in user_bots[username]:
                 threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
-        print("✅ Auto-Bootloader hoàn tất! Mọi tài khoản đã lên sóng.")
+        print("✅ Auto-Bootloader hoàn tất!")
     except Exception as e:
         print(f"⚠️ Lỗi Bootloader: {e}")
 
-# Kích hoạt Bootloader ngay khi server sống dậy
 auto_bootloader()
 
 
@@ -429,9 +427,12 @@ def login():
             session['username'] = username
             return redirect(url_for('index'))
         error = "Thông tin tài khoản hoặc mật khẩu không chính xác!"
+    # Bắt thêm thông báo lỗi từ redirect Discord nếu có
+    if not error and request.args.get('error'):
+        error = request.args.get('error')
     return render_template_string(HTML_AUTH, mode='login', error=error, success=success)
 
-# --- LUỒNG DISCORD OAUTH2 ---
+# --- LUỒNG DISCORD OAUTH2 (FIX ÉP HTTPS) ---
 @app.route('/login/discord')
 def login_discord():
     discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify'])
@@ -441,12 +442,21 @@ def login_discord():
 @app.route('/callback/discord')
 def callback_discord():
     try:
+        # Bắt buộc ép URL thành HTTPS để thư viện không xóa mất biến `code`
+        auth_response = request.url.replace('http://', 'https://')
+        
+        # Bắt trường hợp người dùng bấm "Hủy" trên trang Discord
+        if request.args.get('error'):
+            return redirect(url_for('login', error="Bạn đã hủy ủy quyền Discord."))
+
         discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord")
-        discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=request.url)
+        discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=auth_response)
         user_data = discord.get('https://discord.com/api/users/@me').json()
+        
         username = f"{user_data['username']}_dc"
         if not users_collection.find_one({"username": username}):
             users_collection.insert_one({"username": username, "oauth": "discord"})
+            
         session['username'] = username
         return redirect(url_for('index'))
     except Exception as e:
@@ -462,7 +472,6 @@ def index():
     if 'username' not in session: return redirect(url_for('login'))
     current_user = session['username']
     
-    # Khôi phục nếu bootloader bị miss
     storage_data = load_storage(current_user)
     for key, config in storage_data.items():
         if current_user not in user_bots or key not in user_bots[current_user]:
