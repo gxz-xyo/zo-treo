@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, redirect, url_for
+from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 import threading
 import json
 import time
@@ -6,30 +6,32 @@ import requests
 import websocket
 import os
 from pymongo import MongoClient
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# ================== CẤU HÌNH MONGODB ĐÃ ĐỒNG BỘ TÀI KHOẢN CỦA BARRA ==================
+# ================== CẤU HÌNH MONGODB CLOUD ==================
 MONGO_URI = "mongodb+srv://dangkhoi:itachi5867@cluster0.idnlwyd.mongodb.net/?appName=Cluster0"
 
 try:
-    # Thiết lập kết nối đám mây vĩnh cửu
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    db = client["zo_treo_voice"]
+    db = client["zo_treo_voice_v2"]
     accounts_collection = db["accounts"]
+    users_collection = db["users"] # Bảng lưu tài khoản người dùng
     client.server_info()
-    print("✅ Kết nối tới MongoDB Atlas thành công! Dữ liệu đã được thông suốt.")
+    print("✅ Kết nối tới MongoDB Atlas thành công! Đã nâng cấp hệ thống phân tách người dùng.")
 except Exception as e:
     print(f"💥 Lỗi kết nối MongoDB: {e}")
 
 bots = {}
 
-# ================== HÀM ĐỌC/GHI DỮ LIỆU TỪ ĐÁM MÂY CLOUD ==================
-def load_storage():
+# ================== HÀM ĐỌC/GHI DỮ LIỆU TỪ CLOUD (PHÂN TÁCH THEO USER) ==================
+def load_storage(username):
     try:
         data = {}
-        for doc in accounts_collection.find():
+        # Chỉ tìm những tài khoản thuộc về người dùng đang đăng nhập
+        for doc in accounts_collection.find({"owner": username}):
             data[doc["bot_key"]] = {
                 'token': doc['token'],
                 'guild_id': doc['guild_id'],
@@ -44,8 +46,9 @@ def load_storage():
         print(f"⚠️ Lỗi đọc từ MongoDB: {e}")
         return {}
 
-def save_storage_item(bot_key, config):
+def save_storage_item(bot_key, config, username):
     try:
+        config["owner"] = username # Đánh dấu chủ sở hữu của cấu hình bot này
         accounts_collection.update_one(
             {"bot_key": bot_key},
             {"$set": config},
@@ -60,7 +63,66 @@ def delete_storage_item(bot_key):
     except Exception as e:
         print(f"⚠️ Lỗi xóa trên MongoDB: {e}")
 
-# ================== GIAO DIỆN CHÍNH (DARK THEME ZETA) ==================
+# ================== GIAO DIỆN HỆ THỐNG (HTML TEMPLATES) ==================
+
+HTML_AUTH = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZO Terminal - Xác thực</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: #0a0a0f; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #fff; }
+        .container { max-width: 400px; width: 100%; background: #13131a; border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); border: 1px solid #1f1f2e; }
+        .logo { color: #ff416c; font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
+        .logo span { color: #fff; font-weight: 300; }
+        .sub { text-align: center; color: #6c6c8c; font-size: 13px; margin-bottom: 25px; border-bottom: 1px solid #1f1f2e; padding-bottom: 15px; }
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; color: #a3a3c2; font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
+        .input-group input { width: 100%; padding: 14px; background: #0d0d14; border: 1px solid #26263b; border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
+        .input-group input:focus { border-color: #ff416c; box-shadow: 0 0 0 2px rgba(255, 65, 108, 0.2); }
+        .btn-primary { width: 100%; padding: 15px; background: linear-gradient(90deg, #ff416c, #ff4b2b); border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-primary:hover { transform: scale(1.02); }
+        .switch-link { text-align: center; margin-top: 20px; font-size: 13px; color: #8c8c9e; }
+        .switch-link a { color: #ff416c; text-decoration: none; font-weight: 600; }
+        .error-msg { background: #2f0a0a; color: #ff6b6b; border: 1px solid #4d1414; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; }
+        .success-msg { background: #0a2f1d; color: #4cdf8b; border: 1px solid #144d32; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ZO <span>Terminal</span></div>
+        <div class="sub">Hệ thống phân tách không gian Zeta</div>
+        
+        {% if error %}<div class="error-msg">❌ {{ error }}</div>{% endif %}
+        {% if success %}<div class="success-msg">✅ {{ success }}</div>{% endif %}
+
+        <form method="POST">
+            <div class="input-group">
+                <label>👤 Tên tài khoản</label>
+                <input type="text" name="username" placeholder="Nhập username" required>
+            </div>
+            <div class="input-group">
+                <label>🔑 Mật khẩu</label>
+                <input type="password" name="password" placeholder="Nhập mật khẩu" required>
+            </div>
+            <button type="submit" class="btn-primary">{{ 'ĐĂNG NHẬP' if mode == 'login' else 'ĐĂNG KÝ KHÔNG GIAN' }}</button>
+        </form>
+
+        <div class="switch-link">
+            {% if mode == 'login' %}
+                Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
+            {% else %}
+                Đã có không gian riêng? <a href="/login">Đăng nhập</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 HTML_MAIN = """
 <!DOCTYPE html>
 <html>
@@ -73,9 +135,12 @@ HTML_MAIN = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background: #0a0a0f; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #fff; }
         .container { max-width: 450px; width: 100%; background: #13131a; border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); border: 1px solid #1f1f2e; }
-        .logo { color: #ff416c; font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
+        .logo-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .logo { color: #ff416c; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
         .logo span { color: #fff; font-weight: 300; }
+        .btn-logout { color: #ff6b6b; text-decoration: none; font-size: 12px; font-weight: 600; background: #2a1414; padding: 6px 12px; border-radius: 8px; border: 1px solid #5a1e1e; }
         .sub { text-align: center; color: #6c6c8c; font-size: 13px; margin-bottom: 25px; border-bottom: 1px solid #1f1f2e; padding-bottom: 15px; }
+        .user-tag { color: #4cdf8b; font-weight: bold; }
         .card { background: #1a1a26; border-radius: 20px; padding: 22px; margin-bottom: 20px; border: 1px solid #26263b; }
         .card-title { color: #8c8c9e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; font-weight: 700; }
         .input-group { margin-bottom: 16px; }
@@ -110,17 +175,19 @@ HTML_MAIN = """
 </head>
 <body>
     <div class="container">
-        <div class="logo">xFILL <span>Treo</span></div>
-        <div class="sub">TOOLS BY XFILL @gietanhdi</div>
+        <div class="logo-area">
+            <div class="logo">ZO <span>Treo</span></div>
+            <a href="/logout" class="btn-logout">🚪 Đăng xuất</a>
+        </div>
+        <div class="sub">Không gian của: <span class="user-tag">@{{ current_user }}</span></div>
 
-        <!-- FORM NHẬP THÔNG TIN -->
         <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
             <form method="POST" action="/start">
                 <div class="card">
-                    <div class="card-title">⚙️ CẤU HÌNH TÀI KHOẢN</div>
+                    <div class="card-title">⚙️ CẤU HÌNH TÀI KHOẢN KÊNH VÀO</div>
                     <div class="input-group">
                         <label>🔑 Discord Token</label>
-                        <input type="text" name="token" placeholder="MTEwMT..." required>
+                        <input type="text" name="token" placeholder="Nhập token tài khoản cần treo" required>
                     </div>
                     <div class="input-group">
                         <label>🏠 ID Máy chủ (Server ID)</label>
@@ -136,15 +203,14 @@ HTML_MAIN = """
                         <label><input type="checkbox" name="video"> 📹 Video</label>
                         <label><input type="checkbox" name="stream"> 🖥️ Stream</label>
                     </div>
-                    <button type="submit" class="btn-primary">🚀 BẮT ĐẦU TREO PHÒNG</button>
+                    <button type="submit" class="btn-primary">🚀 BẮT ĐẦU CHIẾM PHÒNG VOICE</button>
                 </div>
             </form>
         </div>
 
-        <!-- THÔNG TIN TRẠNG THÁI BOT -->
         <div id="account-container" class="{{ '' if has_bot else 'hidden' }}">
             <div class="card">
-                <div class="card-title">📋 TÀI KHOẢN ĐANG HOẠT ĐỘNG</div>
+                <div class="card-title">📋 TÀI KHOẢN ĐANG HOẠT ĐỘNG TRÊN KHÔNG GIAN NÀY</div>
                 {% for key, bot in bot_items %}
                 <div class="account-card">
                     <div class="account-info">
@@ -169,16 +235,16 @@ HTML_MAIN = """
             <div class="card">
                 <div class="card-title">💬 NHẬT KÝ HỆ THỐNG</div>
                 <div class="status-box {{ 'online' if status else 'offline' }}">
-                    {{ '✅ HỆ THỐNG ĐANG TREO NỀN' if status else '⏸️ ĐÃ DỪNG HOẠT ĐỘNG' }}
+                    {{ '✅ LUỒNG TREO NỀN ĐANG HOẠT ĐỘNG' if status else '⏸️ ĐÃ DỪNG HOẠT ĐỘNG' }}
                 </div>
-                <div class="log-box">{{ log|join('\\n') if log else '💬 Hệ thống đang khởi động luồng...' }}</div>
+                <div class="log-box">{{ log|join('\\n') if log else '💬 Hệ thống đang khởi động kết nối ngầm...' }}</div>
                 <form method="POST" action="/refresh">
-                    <button type="submit" class="btn-refresh">🔄 CẬP NHẬT LOG MỚI NHẤT</button>
+                    <button type="submit" class="btn-refresh">🔄 CẬP NHẬT NHẬT KÝ MỚI NHẤT</button>
                 </form>
             </div>
         </div>
 
-        <div class="footer">⚡ <span class="highlight">ZO TERMINAL</span> - Thực thi vô điều kiện cho Barra</div>
+        <div class="footer">⚡ <span class="highlight">ZO TERMINAL TOOLS</span> • Tools by xFILL </div>
     </div>
 
     <script>
@@ -189,7 +255,7 @@ HTML_MAIN = """
 </html>
 """
 
-# ================== LUỒNG XỬ LÝ BOT DISCORD ==================
+# ================== LUỒNG XỬ LÝ BOT DISCORD VOICE NGẦM ==================
 def run_bot(bot_key, config):
     token = config['token']
     guild_id = config['guild_id']
@@ -239,7 +305,7 @@ def run_bot(bot_key, config):
             }
             ws_client.send(json.dumps(payload))
         except Exception as e:
-            add_log(f"⚠️ Lỗi gửi dữ liệu voice: {e}")
+            add_log(f"⚠️ Lỗi gửi voice: {e}")
 
     def on_message(ws_client, message):
         nonlocal last_seq, connected, heartbeat_interval
@@ -260,24 +326,24 @@ def run_bot(bot_key, config):
                     "compress": False, "large_threshold": 50
                 }
             }))
-            add_log("📤 Đã gửi gói IDENTIFY xác thực")
+            add_log("📤 Đã gửi gói IDENTIFY")
             
         elif op == 0:
             if t == 'READY':
                 d_name = data['d']['user']['username']
                 if bot_key in bots: bots[bot_key]['display_name'] = d_name
-                add_log(f"🎯 Thực thể trực tuyến: {d_name}")
+                add_log(f"🎯 Acc đang trực tuyến: {d_name}")
                 send_voice_update(ws_client)
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
                     connected = True
                     update_status(True)
-                    add_log("✅ Chiếm quyền phòng Voice thành công!")
+                    add_log("✅ Acc đã vô Voice thành công!")
                 elif d.get('channel_id') is None and connected:
                     connected = False
                     update_status(False)
-                    add_log("⚠️ Bị đẩy khỏi phòng! Đang chiếm lại phòng...")
+                    add_log("⚠️ Bị đẩy khỏi phòng! Tiến hành chiếm lại...")
                     send_voice_update(ws_client)
         elif op == 9:
             ws_client.close()
@@ -287,7 +353,7 @@ def run_bot(bot_key, config):
         if connected:
             connected = False
             update_status(False)
-        add_log("🔌 Kết nối đóng ngắt. Thử lại sau 5s...")
+        add_log("🔌 Kết nối cổng đóng ngắt. Thử lại sau 5s...")
         time.sleep(5)
         if bot_key in bots and bots[bot_key]['running']: start_ws()
 
@@ -326,21 +392,62 @@ def run_bot(bot_key, config):
 
     start_ws()
 
-# ================== ROUTES ĐIỀU HƯỚNG GIAO DIỆN ==================
+# ================== ROUTES HỆ THỐNG XÁC THỰC & ĐIỀU HƯỚNG ==================
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'username' in session: return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username'].strip().lower()
+        password = request.form['password'].strip()
+        
+        if users_collection.find_one({"username": username}):
+            return render_template_string(HTML_AUTH, mode='register', error="Tên tài khoản này đã tồn tại ở Zeta!")
+        
+        hashed_password = generate_password_hash(password)
+        users_collection.insert_one({"username": username, "password": hashed_password})
+        return render_template_string(HTML_AUTH, mode='login', success="Đăng ký không gian thành công! Hãy đăng nhập.")
+    
+    return render_template_string(HTML_AUTH, mode='register')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'username' in session: return redirect(url_for('index'))
+    if request.method == 'POST':
+        username = request.form['username'].strip().lower()
+        password = request.form['password'].strip()
+        
+        user = users_collection.find_one({"username": username})
+        if user and check_password_hash(user['password'], password):
+            session['username'] = username
+            return redirect(url_for('index'))
+        
+        return render_template_string(HTML_AUTH, mode='login', error="Sai tài khoản hoặc mật khẩu tối thượng!")
+    
+    return render_template_string(HTML_AUTH, mode='login')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
+
 @app.route('/', methods=['GET'])
 def index():
-    storage_data = load_storage()
+    if 'username' not in session: return redirect(url_for('login'))
+    current_user = session['username']
+    
+    storage_data = load_storage(current_user)
     for key, config in storage_data.items():
         if key not in bots:
             bots[key] = {
                 'connected': False,
-                'log': ["[🎯] Tự khôi phục tài khoản từ đám mây MongoDB Cloud."],
+                'log': ["[🎯] Tự động tải luồng treo cố định từ đám mây."],
                 'running': True,
                 'display_name': 'Đang khôi phục...'
             }
             threading.Thread(target=run_bot, args=(key, config), daemon=True).start()
 
-    active_bots = [(k, v) for k, v in bots.items() if v.get('running', False)]
+    active_bots = [(k, v) for k, v in bots.items() if v.get('running', False) and k in storage_data]
     has_bot = len(active_bots) > 0
     log = []
     status = False
@@ -349,10 +456,13 @@ def index():
         log = bots[first_key].get('log', [])
         status = bots[first_key].get('connected', False)
         
-    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots)
+    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots, current_user=current_user)
 
 @app.route('/start', methods=['POST'])
 def start_bot_route():
+    if 'username' not in session: return redirect(url_for('login'))
+    current_user = session['username']
+    
     token = request.form['token'].strip()
     guild_id = request.form['guild_id'].strip()
     channel_id = request.form['channel_id'].strip()
@@ -364,13 +474,14 @@ def start_bot_route():
         'video': 'video' in request.form, 'stream': 'stream' in request.form
     }
 
-    save_storage_item(bot_key, config)
-    bots[bot_key] = {'connected': False, 'log': ["🚀 Đang kết nối đám mây..."], 'running': True, 'display_name': 'Đang kết nối...'}
+    save_storage_item(bot_key, config, current_user)
+    bots[bot_key] = {'connected': False, 'log': ["🚀 Đang kết nối luồng đám mây..."], 'running': True, 'display_name': 'Đang kết nối...'}
     threading.Thread(target=run_bot, args=(bot_key, config), daemon=True).start()
     return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
 def stop_bot_route():
+    if 'username' not in session: return redirect(url_for('login'))
     bot_key = request.form.get('bot_key')
     delete_storage_item(bot_key)
     if bot_key in bots:
@@ -379,11 +490,11 @@ def stop_bot_route():
     return redirect(url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
-def refresh():
-    return redirect(url_for('index'))
+def refresh(): return redirect(url_for('index'))
 
 @app.route('/ping')
 def ping(): return "pong"
 
 if __name__ == '__main__':
+    # Chạy hệ thống
     app.run(host='0.0.0.0', port=8080)
