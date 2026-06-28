@@ -72,7 +72,7 @@ def delete_storage_item(bot_key, username):
 CAPTCHA_API_KEY = "72cd105f15332c81afa5855ac4ce7d86"
 
 def solve_captcha(sitekey, pageurl):
-    """Giải captcha bằng anticapcha.top"""
+    """Giải captcha bằng anticapcha.top - đồng bộ, chờ kết quả"""
     create_url = "https://api.anticapcha.top/in.php"
     data = {
         "key": CAPTCHA_API_KEY,
@@ -87,7 +87,7 @@ def solve_captcha(sitekey, pageurl):
         if result.get('status') == 1:
             request_id = result.get('request')
             poll_url = "https://api.anticapcha.top/res.php"
-            for _ in range(30):
+            for _ in range(30):  # Tối đa 30 lần * 5s = 150 giây
                 time.sleep(5)
                 poll_data = {"key": CAPTCHA_API_KEY, "action": "get", "id": request_id, "json": 1}
                 poll_resp = requests.get(poll_url, params=poll_data, timeout=15)
@@ -768,8 +768,36 @@ def update_discord_profile():
         return redirect(url_for('index', tab='tools'))
 
     headers = {"Authorization": token, "Content-Type": "application/json"}
+    
+    def patch_with_captcha_retry(payload, headers, max_retries=1):
+        for attempt in range(max_retries + 1):
+            r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
+            if r.status_code == 200:
+                return r, None
+            elif r.status_code == 400 and 'captcha' in r.text.lower():
+                if attempt < max_retries:
+                    error_data = r.json()
+                    captcha_sitekey = error_data.get('captcha_sitekey', 'f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34')
+                    captcha_rqtoken = error_data.get('captcha_rqtoken')
+                    
+                    # Giải captcha đồng bộ
+                    captcha_solution = solve_captcha(captcha_sitekey, "https://discord.com/api/v9/users/@me")
+                    if captcha_solution:
+                        headers["X-Captcha-Key"] = captcha_solution
+                        if captcha_rqtoken:
+                            payload["captcha_rqtoken"] = captcha_rqtoken
+                        continue  # thử lại với captcha
+                    else:
+                        return r, "Không thể giải captcha."
+                else:
+                    return r, "Giải captcha thất bại sau khi thử."
+            else:
+                return r, None
+        return r, "Quá số lần thử."
+
     try:
-        r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=10)
+        r, error_msg = patch_with_captcha_retry(payload, headers)
+        
         if r.status_code == 200:
             session['flash_msg'] = "Cập nhật thành công!"
             session['flash_type'] = "success"
@@ -781,26 +809,16 @@ def update_discord_profile():
                 'avatar': data.get('avatar'),
                 'id': data.get('id')
             }
-            return redirect(url_for('index', tab='tools'))
-
-        elif r.status_code == 400 and 'captcha' in r.text.lower():
-            error_data = r.json()
-            captcha_sitekey = error_data.get('captcha_sitekey')
-            if not captcha_sitekey:
-                captcha_sitekey = "f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34"
-            captcha_rqtoken = error_data.get('captcha_rqtoken')
-            
-            session['flash_msg'] = "⏳ Đang giải captcha, vui lòng chờ..."
-            session['flash_type'] = "success"
-            return redirect(url_for('index', tab='tools'))
-            
-            # Note: Captcha giải bất đồng bộ, tao sẽ xử lý trong background ở bản sau
         else:
-            session['flash_msg'] = f"Lỗi cập nhật: {r.text}"
+            if error_msg:
+                session['flash_msg'] = error_msg
+            else:
+                session['flash_msg'] = f"Lỗi cập nhật: {r.text[:200]}"
             session['flash_type'] = "error"
     except Exception as e:
         session['flash_msg'] = f"Lỗi kết nối: {str(e)}"
         session['flash_type'] = "error"
+    
     return redirect(url_for('index', tab='tools'))
 
 @app.route('/refresh', methods=['POST'])
