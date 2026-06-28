@@ -1,3 +1,5 @@
 Flask
 requests
 websocket-client
+pymongo
+dnspython
