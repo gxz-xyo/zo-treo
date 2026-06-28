@@ -5,14 +5,81 @@ import time
 import requests
 import websocket
 import os
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Lưu bot toàn cục, không phụ thuộc session
+# Đường dẫn lưu cơ sở dữ liệu (Trỏ vào thư mục data để gắn ổ đĩa cố định trên Render)
+DB_DIR = "/opt/render/project/src/data" if os.path.exists("/opt/render/project/src") else "data"
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR)
+
+DB_FILE = os.path.join(DB_DIR, "storage.db")
 bots = {}
 
-# ================== GIAO DIỆN CHÍNH ==================
+# ================== KHỞI TẠO CƠ SỞ DỮ LIỆU SQLITE ==================
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS accounts (
+            bot_key TEXT PRIMARY KEY,
+            token TEXT,
+            guild_id TEXT,
+            channel_id TEXT,
+            mute INTEGER,
+            deaf INTEGER,
+            video INTEGER,
+            stream INTEGER
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def load_storage():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT bot_key, token, guild_id, channel_id, mute, deaf, video, stream FROM accounts')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    data = {}
+    for row in rows:
+        data[row[0]] = {
+            'token': row[1],
+            'guild_id': row[2],
+            'channel_id': row[3],
+            'mute': bool(row[4]),
+            'deaf': bool(row[5]),
+            'video': bool(row[6]),
+            'stream': bool(row[7])
+        }
+    return data
+
+def save_storage_item(bot_key, config):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO accounts (bot_key, token, guild_id, channel_id, mute, deaf, video, stream)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (bot_key, config['token'], config['guild_id'], config['channel_id'], 
+          1 if config['mute'] else 0, 1 if config['deaf'] else 0, 
+          1 if config['video'] else 0, 1 if config['stream'] else 0))
+    conn.commit()
+    conn.close()
+
+def delete_storage_item(bot_key):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM accounts WHERE bot_key = ?', (bot_key,))
+    conn.commit()
+    conn.close()
+
+# Khởi tạo DB ngay khi chạy app
+init_db()
+
+# ================== GIAO DIỆN CHÍNH (DARK THEME ZETA) ==================
 HTML_MAIN = """
 <!DOCTYPE html>
 <html>
@@ -23,56 +90,55 @@ HTML_MAIN = """
     <title>ZO Treo - Voice 24/7</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background: #0e0b16; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { max-width: 500px; width: 100%; background: #1a1a2e; border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); border: 1px solid #2a2a4a; }
-        .logo { color: #e94560; font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
+        body { background: #0a0a0f; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #fff; }
+        .container { max-width: 450px; width: 100%; background: #13131a; border-radius: 24px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); border: 1px solid #1f1f2e; }
+        .logo { color: #ff416c; font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
         .logo span { color: #fff; font-weight: 300; }
-        .sub { text-align: center; color: #8888aa; font-size: 13px; margin-bottom: 25px; border-bottom: 1px solid #2a2a4a; padding-bottom: 15px; }
-        .card { background: #12121f; border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a4a; }
-        .card-title { color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-        .input-group { margin-bottom: 12px; }
-        .input-group label { display: block; color: #ccc; font-size: 13px; margin-bottom: 4px; font-weight: 500; }
-        .input-group input { width: 100%; padding: 12px 14px; background: #0e0b16; border: 1px solid #2a2a4a; border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
-        .input-group input:focus { border-color: #e94560; box-shadow: 0 0 0 2px rgba(233,69,96,0.2); }
-        .options { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0; }
-        .options label { color: #aaa; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        .options input[type="checkbox"] { accent-color: #e94560; width: 16px; height: 16px; }
-        .btn-primary { width: 100%; padding: 14px; background: #e94560; border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.3s; }
-        .btn-primary:hover { background: #c73652; transform: scale(1.01); }
-        .btn-danger { padding: 10px 20px; background: #2a1a1a; border: 1px solid #5a2a2a; border-radius: 10px; color: #ff6b6b; font-weight: 600; cursor: pointer; }
-        .btn-refresh { padding: 10px 20px; background: #1a1a3a; border: 1px solid #2a2a5a; border-radius: 10px; color: #88aaff; font-weight: 600; cursor: pointer; }
-        .btn-config { padding: 10px 20px; background: #1a2a1a; border: 1px solid #2a5a2a; border-radius: 10px; color: #88ff88; font-weight: 600; cursor: pointer; }
-        .status-box { padding: 12px 16px; border-radius: 12px; margin: 15px 0; text-align: center; font-weight: 600; }
-        .online { background: #0f3b2b; color: #4cdf8b; border: 1px solid #1e5a3a; }
-        .offline { background: #3b1a1a; color: #ff6b6b; border: 1px solid #5a2a2a; }
-        .log-box { background: #0a0a12; border-radius: 12px; padding: 10px; max-height: 180px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #88ccff; border: 1px solid #1a1a2e; margin: 15px 0; white-space: pre-wrap; word-break: break-all; }
+        .sub { text-align: center; color: #6c6c8c; font-size: 13px; margin-bottom: 25px; border-bottom: 1px solid #1f1f2e; padding-bottom: 15px; }
+        .card { background: #1a1a26; border-radius: 20px; padding: 22px; margin-bottom: 20px; border: 1px solid #26263b; }
+        .card-title { color: #8c8c9e; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; font-weight: 700; }
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; color: #a3a3c2; font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-group input { width: 100%; padding: 14px; background: #0d0d14; border: 1px solid #26263b; border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
+        .input-group input:focus { border-color: #ff416c; box-shadow: 0 0 0 2px rgba(255, 65, 108, 0.2); }
+        .options { display: flex; flex-wrap: wrap; gap: 14px; margin: 15px 0; }
+        .options label { color: #a3a3c2; font-size: 13px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #11111a; padding: 8px 12px; border-radius: 8px; border: 1px solid #26263b; }
+        .options input[type="checkbox"] { accent-color: #ff416c; width: 16px; height: 16px; }
+        .btn-primary { width: 100%; padding: 15px; background: linear-gradient(90deg, #ff416c, #ff4b2b); border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3); }
+        .btn-primary:hover { transform: scale(1.02); opacity: 0.95; }
+        .btn-danger { padding: 10px 18px; background: #2a1414; border: 1px solid #5a1e1e; border-radius: 10px; color: #ff6b6b; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-danger:hover { background: #3d1c1c; }
+        .btn-refresh { padding: 12px; background: #14142a; border: 1px solid #23234e; border-radius: 10px; color: #6ba4ff; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn-refresh:hover { background: #1c1c3a; }
+        .status-box { padding: 12px 16px; border-radius: 12px; margin: 15px 0; text-align: center; font-weight: 600; font-size: 14px; }
+        .online { background: #0a2f1d; color: #4cdf8b; border: 1px solid #144d32; }
+        .offline { background: #2f0a0a; color: #ff6b6b; border: 1px solid #4d1414; }
+        .log-box { background: #08080c; border-radius: 12px; padding: 12px; max-height: 180px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #7fbdff; border: 1px solid #191926; margin: 15px 0; white-space: pre-wrap; word-break: break-all; }
         .log-box::-webkit-scrollbar { width: 4px; }
-        .log-box::-webkit-scrollbar-thumb { background: #e94560; border-radius: 4px; }
-        .row-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .account-card { background: #12121f; border-radius: 16px; padding: 16px; margin: 10px 0; border: 1px solid #2a2a4a; display: flex; justify-content: space-between; align-items: center; }
-        .account-info { color: #ccc; }
-        .account-info .name { font-weight: 700; color: #fff; }
+        .log-box::-webkit-scrollbar-thumb { background: #ff416c; border-radius: 4px; }
+        .account-card { background: #11111a; border-radius: 14px; padding: 16px; margin: 10px 0; border: 1px solid #232336; display: flex; justify-content: space-between; align-items: center; }
+        .account-info { color: #a3a3c2; }
+        .account-info .name { font-weight: 700; color: #fff; font-size: 15px; margin-bottom: 2px; }
         .account-info .status { font-size: 12px; }
-        .status-online { color: #4cdf8b; }
-        .status-offline { color: #ff6b6b; }
-        .footer { text-align: center; color: #444; font-size: 11px; margin-top: 20px; }
-        .highlight { color: #e94560; }
+        .status-online { color: #4cdf8b; font-weight: bold; }
+        .status-offline { color: #ff6b6b; font-weight: bold; }
+        .footer { text-align: center; color: #3c3c54; font-size: 11px; margin-top: 25px; letter-spacing: 0.5px; }
+        .highlight { color: #ff416c; font-weight: bold; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">ZO <span>Treo</span></div>
-        <div class="sub">Treo tài khoản trong kênh voice Discord 24/7</div>
+        <div class="logo">xFILL <span>Treo</span></div>
+        <div class="sub">Bản Quyền Thuộc Về DISCORD @gietanhdi</div>
 
-        <!-- FORM NHẬP THÔNG TIN (HIỆN KHI CHƯA CÓ BOT) -->
         <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
             <form method="POST" action="/start">
                 <div class="card">
-                    <div class="card-title">⚙️ Cấu hình tài khoản</div>
+                    <div class="card-title">⚙️ CẤU HÌNH TÀI KHOẢN</div>
                     <div class="input-group">
-                        <label>🔑 Token Discord</label>
-                        <input type="text" name="token" placeholder="Nhập token của bạn" required>
+                        <label>🔑 Discord Token</label>
+                        <input type="text" name="token" placeholder="MTEwMT..." required>
                     </div>
                     <div class="input-group">
                         <label>🏠 ID Máy chủ (Server ID)</label>
@@ -88,31 +154,26 @@ HTML_MAIN = """
                         <label><input type="checkbox" name="video"> 📹 Video</label>
                         <label><input type="checkbox" name="stream"> 🖥️ Stream</label>
                     </div>
-                    <button type="submit" class="btn-primary">🚀 BẮT ĐẦU TREO</button>
+                    <button type="submit" class="btn-primary">🚀 BẮT ĐẦU TREO PHÒNG</button>
                 </div>
             </form>
         </div>
 
-        <!-- CARD TÀI KHOẢN ĐANG TREO (HIỆN KHI CÓ BOT) -->
         <div id="account-container" class="{{ '' if has_bot else 'hidden' }}">
             <div class="card">
-                <div class="card-title">📋 Tài khoản đang treo</div>
+                <div class="card-title">📋 TÀI KHOẢN ĐANG HOẠT ĐỘNG</div>
                 {% for key, bot in bot_items %}
                 <div class="account-card">
                     <div class="account-info">
-                        <div class="name">{{ bot.get('display_name', 'Bot') }}</div>
+                        <div class="name">{{ bot.get('display_name', 'Đang kết nối...') }}</div>
                         <div class="status">
                             Trạng thái: 
                             <span class="{{ 'status-online' if bot.get('connected') else 'status-offline' }}">
-                                {{ '✅ Đang treo' if bot.get('connected') else '⏸️ Đã dừng' }}
+                                {{ '✅ Đang treo' if bot.get('connected') else '⏸️ Đang đợi kết nối' }}
                             </span>
                         </div>
                     </div>
                     <div>
-                        <form method="POST" action="/config" style="display:inline;">
-                            <input type="hidden" name="bot_key" value="{{ key }}">
-                            <button type="submit" class="btn-config">⚙️ Cấu hình</button>
-                        </form>
                         <form method="POST" action="/stop" style="display:inline;">
                             <input type="hidden" name="bot_key" value="{{ key }}">
                             <button type="submit" class="btn-danger">⏹️ Dừng</button>
@@ -121,36 +182,31 @@ HTML_MAIN = """
                 </div>
                 {% endfor %}
             </div>
+            
             <div class="card">
+                <div class="card-title">💬 NHẬT KÝ HỆ THỐNG</div>
                 <div class="status-box {{ 'online' if status else 'offline' }}">
-                    {{ '✅ Đang treo' if status else '⏸️ Chưa treo' }}
+                    {{ '✅ HỆ THỐNG ĐANG TREO NỀN' if status else '⏸️ ĐÃ DỪNG HOẠT ĐỘNG' }}
                 </div>
-                <div class="log-box">{{ log|join('\\n') if log else '💬 Chưa có log nào...' }}</div>
-                <div class="row-actions">
-                    <form method="POST" action="/refresh" style="flex:1;">
-                        <button type="submit" class="btn-refresh" style="width:100%;">🔄 Refresh Log</button>
-                    </form>
-                </div>
+                <div class="log-box">{{ log|join('\\n') if log else '💬 Hệ thống đang khởi động luồng...' }}</div>
+                <form method="POST" action="/refresh">
+                    <button type="submit" class="btn-refresh">🔄 CẬP NHẬT LOG MỚI NHẤT</button>
+                </form>
             </div>
         </div>
 
-        <div class="footer">⚡ <span class="highlight">ZO</span> - Bản Quyền Thuộc Về DISCORD @gietanhdi</div>
+        <div class="footer">⚡ <span class="highlight">ZO TERMINAL</span> - Thực thi vô điều kiện cho Barra</div>
     </div>
 
     <script>
-        // Tự động reload để cập nhật log (không làm mất bot)
-        setInterval(() => {
-            fetch('/ping').then(() => {});
-        }, 20000);
-        setInterval(() => {
-            location.reload();
-        }, 30000);
+        setInterval(() => { fetch('/ping').then(() => {}); }, 15000);
+        setInterval(() => { location.reload(); }, 20000);
     </script>
 </body>
 </html>
 """
 
-# ================== PHẦN XỬ LÝ BOT (TỐI ƯU) ==================
+# ================== LUỒNG XỬ LÝ BOT DISCORD ==================
 def run_bot(bot_key, config):
     token = config['token']
     guild_id = config['guild_id']
@@ -164,22 +220,28 @@ def run_bot(bot_key, config):
     last_seq = None
     heartbeat_interval = 41250
     connected = False
-    running = True
     reconnect_attempts = 0
-    display_name = ""
+
+    if bot_key not in bots:
+        bots[bot_key] = {
+            'connected': False,
+            'log': [],
+            'running': True,
+            'display_name': 'Đang kết nối...'
+        }
 
     def add_log(msg):
         if bot_key in bots:
             bots[bot_key]['log'].append(f"[{time.strftime('%H:%M:%S')}] {msg}")
-            if len(bots[bot_key]['log']) > 100:
-                bots[bot_key]['log'] = bots[bot_key]['log'][-100:]
+            if len(bots[bot_key]['log']) > 80:
+                bots[bot_key]['log'] = bots[bot_key]['log'][-80:]
 
     def update_status(status):
         if bot_key in bots:
             bots[bot_key]['connected'] = status
 
-    def send_voice_update(ws):
-        if not ws or not ws.keep_running:
+    def send_voice_update(ws_client):
+        if not ws_client or not ws_client.keep_running:
             return
         try:
             payload = {
@@ -193,71 +255,75 @@ def run_bot(bot_key, config):
                     "self_stream": stream
                 }
             }
-            ws.send(json.dumps(payload))
-        except:
-            pass
+            ws_client.send(json.dumps(payload))
+        except Exception as e:
+            add_log(f"⚠️ Lỗi gửi voice state: {e}")
 
-    def on_message(ws, message):
-        nonlocal last_seq, connected, heartbeat_interval, display_name
+    def on_message(ws_client, message):
+        nonlocal last_seq, connected, heartbeat_interval
         try:
             data = json.loads(message)
         except:
             return
+        
         last_seq = data.get('s', last_seq)
         op = data.get('op')
         t = data.get('t')
 
         if op == 10:
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-            ws.send(json.dumps({
+            identify_payload = {
                 "op": 2,
                 "d": {
                     "token": token,
-                    "properties": {"os": "Linux", "browser": "Chrome", "device": "ZO"},
+                    "properties": {"os": "Linux", "browser": "Chrome", "device": "ZO_Zeta"},
                     "compress": False,
                     "large_threshold": 50
                 }
-            }))
-            add_log("📤 Đã gửi IDENTIFY")
+            }
+            ws_client.send(json.dumps(identify_payload))
+            add_log("📤 Đã gửi gói IDENTIFY")
+            
         elif op == 0:
             if t == 'READY':
-                display_name = data['d']['user']['username']
+                d_name = data['d']['user']['username']
                 if bot_key in bots:
-                    bots[bot_key]['display_name'] = display_name
-                add_log(f"🎯 Đã xác thực: {display_name}")
-                send_voice_update(ws)
+                    bots[bot_key]['display_name'] = d_name
+                add_log(f"🎯 Thực thể trực tuyến: {d_name}")
+                send_voice_update(ws_client)
+                
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
                     connected = True
                     update_status(True)
-                    add_log("✅ Đã vào phòng thành công! Đang treo...")
+                    add_log("✅ Chiếm quyền phòng Voice thành công!")
                 elif d.get('channel_id') is None and connected:
                     connected = False
                     update_status(False)
-                    add_log("⚠️ Bị rời phòng! Thử vào lại...")
-                    send_voice_update(ws)
+                    add_log("⚠️ Bị đẩy khỏi phòng! Tiến hành chiếm lại...")
+                    send_voice_update(ws_client)
+                    
         elif op == 9:
-            add_log("⚠️ Session lỗi, reconnect...")
-            ws.close()
+            add_log("⚠️ Session hỏng, đang kết nối lại...")
+            ws_client.close()
 
-    def on_close(ws, code, msg):
-        nonlocal reconnect_attempts
+    def on_close(ws_client, code, msg):
+        nonlocal connected
         if connected:
             connected = False
             update_status(False)
-        add_log(f"🔌 Mất kết nối, reconnect sau 5s...")
+        add_log("🔌 Kết nối đóng. Thử lại sau 5s...")
         time.sleep(5)
-        if running:
+        if bot_key in bots and bots[bot_key]['running']:
             start_ws()
 
-    def on_error(ws, error):
+    def on_error(ws_client, error):
         if "Connection closed" not in str(error):
-            add_log(f"💥 Lỗi: {error}")
+            add_log(f"💥 Lỗi luồng: {error}")
 
     def heartbeat_loop():
-        nonlocal ws, last_seq
-        while running:
+        while bot_key in bots and bots[bot_key]['running']:
             time.sleep(heartbeat_interval)
             if ws and ws.keep_running:
                 try:
@@ -266,97 +332,106 @@ def run_bot(bot_key, config):
                     pass
 
     def keep_alive_loop():
-        while running:
-            time.sleep(20)
+        while bot_key in bots and bots[bot_key]['running']:
+            time.sleep(25)
             if ws and ws.keep_running and connected:
                 send_voice_update(ws)
 
     def start_ws():
         nonlocal ws, reconnect_attempts
+        if bot_key not in bots or not bots[bot_key]['running']:
+            return
+            
         reconnect_attempts += 1
-        if reconnect_attempts > 20:
-            add_log("❌ Quá số lần reconnect, dừng bot.")
+        if reconnect_attempts > 100:
+            add_log("❌ Quá giới hạn reconnect.")
             update_status(False)
-            if bot_key in bots:
-                bots[bot_key]['running'] = False
             return
+            
         try:
-            gateway = requests.get("https://discord.com/api/v9/gateway").json()['url']
-        except:
-            add_log("❌ Không lấy được gateway, thử lại...")
+            gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
+        except Exception as e:
+            add_log("❌ Lỗi lấy gateway, thử lại sau 5s...")
             time.sleep(5)
-            if running:
-                start_ws()
+            start_ws()
             return
+            
         ws = websocket.WebSocketApp(
             gateway + "/?v=9&encoding=json",
             on_message=on_message,
             on_error=on_error,
             on_close=on_close
         )
+        
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         threading.Thread(target=keep_alive_loop, daemon=True).start()
         ws.run_forever()
 
-    add_log("🚀 Khởi tạo bot...")
+    add_log("🚀 Khởi chạy luồng ngầm...")
     start_ws()
-    add_log("🛑 Bot đã dừng.")
-    update_status(False)
-    if bot_key in bots:
-        bots[bot_key]['running'] = False
 
 # ================== ROUTES ==================
 @app.route('/', methods=['GET'])
 def index():
-    bot_key = None
-    for key in bots.keys():
-        if bots[key].get('running', False):
-            bot_key = key
-            break
-    if bot_key:
-        log = bots[bot_key].get('log', [])
-        status = bots[bot_key].get('connected', False)
-        has_bot = True
-        bot_items = [(key, bots[key]) for key in bots.keys() if bots[key].get('running', False)]
-    else:
-        log = []
-        status = False
-        has_bot = False
-        bot_items = []
-    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=bot_items)
+    storage_data = load_storage()
+    
+    for key, config in storage_data.items():
+        if key not in bots:
+            bots[key] = {
+                'connected': False,
+                'log': ["[🎯] Khôi phục tài khoản từ bộ lưu trữ vĩnh cửu."],
+                'running': True,
+                'display_name': 'Đang khôi phục...'
+            }
+            threading.Thread(target=run_bot, args=(key, config), daemon=True).start()
+
+    active_bots = [(k, v) for k, v in bots.items() if v.get('running', False)]
+    has_bot = len(active_bots) > 0
+    
+    log = []
+    status = False
+    if has_bot:
+        first_key = active_bots[0][0]
+        log = bots[first_key].get('log', [])
+        status = bots[first_key].get('connected', False)
+        
+    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots)
 
 @app.route('/start', methods=['POST'])
-def start_bot():
-    token = request.form['token']
-    guild_id = request.form['guild_id']
-    channel_id = request.form['channel_id']
+def start_bot_route():
+    token = request.form['token'].strip()
+    guild_id = request.form['guild_id'].strip()
+    channel_id = request.form['channel_id'].strip()
     mute = 'mute' in request.form
     deaf = 'deaf' in request.form
     video = 'video' in request.form
     stream = 'stream' in request.form
 
     bot_key = f"{guild_id}_{channel_id}"
-    if bot_key in bots and bots[bot_key].get('running', False):
-        bots[bot_key]['running'] = False
-        time.sleep(0.5)
-
     config = {'token': token, 'guild_id': guild_id, 'channel_id': channel_id, 'mute': mute, 'deaf': deaf, 'video': video, 'stream': stream}
-    thread = threading.Thread(target=run_bot, args=(bot_key, config), daemon=True)
-    thread.start()
-    bots[bot_key] = {'thread': thread, 'connected': False, 'log': [f"🚀 Khởi tạo bot..."], 'running': True, 'display_name': 'Đang kết nối...'}
+
+    save_storage_item(bot_key, config)
+
+    bots[bot_key] = {
+        'connected': False,
+        'log': ["🚀 Thiết lập luồng treo nền vĩnh cửu..."],
+        'running': True,
+        'display_name': 'Đang kết nối...'
+    }
+    
+    threading.Thread(target=run_bot, args=(bot_key, config), daemon=True).start()
     return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
-def stop_bot():
+def stop_bot_route():
     bot_key = request.form.get('bot_key')
-    if bot_key and bot_key in bots:
+    delete_storage_item(bot_key)
+        
+    if bot_key in bots:
         bots[bot_key]['running'] = False
-        bots[bot_key]['log'].append("⏹️ Đã dừng bot.")
-    return redirect(url_for('index'))
-
-@app.route('/config', methods=['POST'])
-def config_bot():
-    # Chuyển về form cấu hình (chưa implement)
+        bots[bot_key]['connected'] = False
+        del bots[bot_key]
+        
     return redirect(url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
