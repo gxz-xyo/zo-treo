@@ -12,7 +12,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Cho phép chạy thử nghiệm luồng OAuth2
+# Cho phép chạy thử nghiệm luồng OAuth2 qua HTTP
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH CƠ SỞ DỮ LIỆU ĐÁM MÂY MONGODB ==================
@@ -20,22 +20,21 @@ MONGO_URI = "mongodb+srv://dangkhoi:itachi5867@cluster0.idnlwyd.mongodb.net/?app
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    db = client["za_tools_ultimate"]
+    db = client["za_tools_ultimate_v5"]
     accounts_collection = db["accounts"]
     users_collection = db["users"]
     client.server_info()
-    print("✅ Kết nối tới MongoDB Atlas thành công! Đã kích hoạt hệ thống Za Tools V4.")
+    print("✅ Kết nối tới MongoDB Atlas thành công! Đã fix triệt để luồng Đăng nhập v5.")
 except Exception as e:
     print(f"💥 Lỗi kết nối dữ liệu: {e}")
 
 user_bots = {}
 
-# ================== CẤU HÌNH KHÓA API OAUTH2 CỦA BARRA ==================
+# ================== CẤU HÌNH KHÓA API OAUTH2 ĐÃ ĐỒNG BỘ CỦA BARRA ==================
 DISCORD_CLIENT_ID = '1504310281625403544'
 DISCORD_CLIENT_SECRET = 'FuZ0Xru4xBnE0UoxpmEEbby51ZB8D0RN'
 
 GOOGLE_CLIENT_ID = '708417317286-aok0mehdiqgc0osqda021mi5nm205p4o.apps.googleusercontent.com'
-# Nhớ điền Google Secret vào dấu nháy dưới này nếu muốn sài thêm cổng Gmail
 GOOGLE_CLIENT_SECRET = 'ĐIỀN_GOOGLE_CLIENT_SECRET_CỦA_MÀY_VÀO_ĐÂY'
 
 DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize'
@@ -43,7 +42,6 @@ DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token'
 GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/auth'
 GOOGLE_TOKEN_URL = 'https://accounts.google.com/o/oauth2/token'
 
-# Tự động bắt base URL để tránh lỗi redirect_uri_mismatch
 def get_base_url():
     return "https://zo-treo.onrender.com"
 
@@ -79,7 +77,7 @@ def delete_storage_item(bot_key, username):
     except Exception as e:
         print(f"⚠️ Lỗi xóa dữ liệu: {e}")
 
-# ================== GIAO DIỆN HỆ THỐNG ĐA NĂNG XỊN SÒ ==================
+# ================== GIAO DIỆN HỆ THỐNG FIX NÚT BẤM (CSS PREMIUM) ==================
 HTML_AUTH = """
 <!DOCTYPE html>
 <html>
@@ -94,15 +92,16 @@ HTML_AUTH = """
         .logo { color: #66fcf1; font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 8px; letter-spacing: 0.5px; }
         .sub { text-align: center; color: #85929e; font-size: 13px; margin-bottom: 25px; }
         .input-group { margin-bottom: 16px; }
-        .input-group label { display: block; color: #45f3ff; font-size: 11px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
+        .input-group label { display: block; color: #66fcf1; font-size: 11px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 12px; background: #0b0c10; border: 1px solid #2f3e46; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: all 0.3s ease; }
         .input-group input:focus { border-color: #66fcf1; }
         .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #1f4068, #162447); border: 1px solid #45f3ff; border-radius: 8px; color: #66fcf1; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.3s; letter-spacing: 0.5px; }
         .btn-primary:hover { background: #66fcf1; color: #0b0c10; }
-        .divider { display: flex; align-items: center; text-align: center; color: #566573; font-size: 11px; margin: 20px 0; font-weight: 600; text-transform: uppercase; }
+        .divider { display: flex; align-items: center; text-align: center; color: #566573; font-size: 11px; margin: 25px 0; font-weight: 600; text-transform: uppercase; }
         .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #2f3e46; }
         .divider:not(:empty)::before { margin-right: .5em; }
         .divider:not(:empty)::after { margin-left: .5em; }
+        .oauth-container { width: 100%; }
         .btn-oauth { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; text-decoration: none; }
         .btn-discord { background: #5865F2; color: #fff; }
         .btn-discord:hover { background: #4752C4; }
@@ -119,10 +118,11 @@ HTML_AUTH = """
         <div class="logo">Za Tools</div>
         <div class="sub">Hệ thống treo voice tự động chuyên nghiệp</div>
         
-        {% if error %}<div class="error-msg">❌ {{ error }}</div>{% endif %}
-        {% if success %}<div class="success-msg">✅ {{ success }}</div>{% endif %}
+        {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+        {% if success %}<div class="success-msg">{{ success }}</div>{% endif %}
 
-        <form method="POST">
+        <!-- BIỂU MẪU ĐĂNG NHẬP / ĐĂNG KÝ TRUYỀN THỐNG -->
+        <form method="POST" action="{{ '/login' if mode == 'login' else '/register' }}">
             <div class="input-group">
                 <label>Tên tài khoản</label>
                 <input type="text" name="username" placeholder="Nhập username" required autocomplete="off">
@@ -136,8 +136,11 @@ HTML_AUTH = """
 
         <div class="divider">Hoặc đăng nhập nhanh</div>
 
-        <a href="/login/discord" class="btn-oauth btn-discord">🎮 Đăng nhập bằng Discord</a>
-        <a href="/login/google" class="btn-oauth btn-google">🚀 Đăng nhập bằng Google</a>
+        <!-- ĐƯỢC TÁCH BIỆT HOÀN TOÀN KHỎI FORM ĐỂ TRÁNH LỖI PHÍM BẤM TRÊN ĐIỆN THOẠI -->
+        <div class="oauth-container">
+            <a href="/login/discord" class="btn-oauth btn-discord">🎮 Đăng nhập bằng Discord</a>
+            <a href="/login/google" class="btn-oauth btn-google">🚀 Đăng nhập bằng Google</a>
+        </div>
 
         <div class="switch-link">
             {% if mode == 'login' %}
@@ -151,7 +154,7 @@ HTML_AUTH = """
 </html>
 """
 
-# [Giao diện HTML_MAIN giữ nguyên phong cách Za Tools Premium ở V3]
+# [Giao diện Dashboard chính]
 HTML_MAIN = """
 <!DOCTYPE html>
 <html>
@@ -198,6 +201,7 @@ HTML_MAIN = """
         .contact-link { color: #0088cc; text-decoration: none; font-weight: bold; transition: 0.2s; }
         .contact-link:hover { text-decoration: underline; color: #00aacc; }
         .footer { text-align: center; color: #566573; font-size: 11px; margin-top: 25px; border-top: 1px solid #2f3e46; padding-top: 15px; letter-spacing: 0.5px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -208,6 +212,7 @@ HTML_MAIN = """
         </div>
         <div class="user-welcome">Không gian định danh: <span>@{{ current_user }}</span></div>
 
+        <!-- FORM CẤU HÌNH -->
         <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
             <form method="POST" action="/start">
                 <div class="card">
@@ -235,6 +240,7 @@ HTML_MAIN = """
             </form>
         </div>
 
+        <!-- TRẠNG THÁI HOẠT ĐỘNG -->
         <div id="account-container" class="{{ '' if has_bot else 'hidden' }}">
             <div class="card">
                 <div class="card-title">Tài khoản đang chạy ngầm</div>
@@ -300,7 +306,7 @@ def run_bot(bot_key, config, username):
         except: pass
     threading.Thread(target=start_ws, daemon=True).start()
 
-# ================== ENDPOINTS TRUYỀN THỐNG & OAUTH2 SỬA LỖI REDIRECT ==================
+# ================== ENDPOINTS XỬ LÝ ĐĂNG NHẬP THỦ CÔNG & TỰ ĐỘNG ==================
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -328,6 +334,7 @@ def login():
         return render_template_string(HTML_AUTH, mode='login', error="Thông tin tài khoản hoặc mật khẩu sai!")
     return render_template_string(HTML_AUTH, mode='login')
 
+# --- LUỒNG ĐĂNG NHẬP DISCORD (ĐÃ FIX LỖI) ---
 @app.route('/login/discord')
 def login_discord():
     redirect_uri = f"{get_base_url()}/callback/discord"
@@ -342,11 +349,18 @@ def callback_discord():
         discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=redirect_uri)
         discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=request.url)
         user_data = discord.get('https://discord.com/api/users/@me').json()
-        session['username'] = f"{user_data['username']}_dc"
+        
+        # Tự động tạo tài khoản ngầm nếu chưa có trong Database
+        username = f"{user_data['username']}_dc"
+        if not users_collection.find_one({"username": username}):
+            users_collection.insert_one({"username": username, "oauth": "discord"})
+            
+        session['username'] = username
         return redirect(url_for('index'))
     except Exception as e:
         return redirect(url_for('login', error=f"Lỗi cổng Discord: {str(e)}"))
 
+# --- LUỒNG ĐĂNG NHẬP GOOGLE (ĐÃ FIX LỖI) ---
 @app.route('/login/google')
 def login_google():
     redirect_uri = f"{get_base_url()}/callback/google"
@@ -361,7 +375,13 @@ def callback_google():
         google = OAuth2Session(GOOGLE_CLIENT_ID, redirect_uri=redirect_uri)
         google.fetch_token(GOOGLE_TOKEN_URL, client_secret=GOOGLE_CLIENT_SECRET, authorization_response=request.url)
         user_data = google.get('https://www.googleapis.com/oauth2/v1/userinfo').json()
-        session['username'] = user_data['email']
+        
+        # Tự động tạo tài khoản ngầm từ Email Google
+        username = user_data['email']
+        if not users_collection.find_one({"username": username}):
+            users_collection.insert_one({"username": username, "oauth": "google"})
+            
+        session['username'] = username
         return redirect(url_for('index'))
     except Exception as e:
         return redirect(url_for('login', error=f"Cấu hình khóa bí mật Google Client Secret trên host trống hoặc sai."))
