@@ -134,7 +134,7 @@ HTML_MAIN = """
             </div>
         </div>
 
-        <div class="footer">⚡ <span class="highlight">ZO</span> - Quyền lực thuộc về Barra</div>
+        <div class="footer">⚡ <span class="highlight">ZO</span> - Bản Quyền Thuộc Về DISCORD @gietanhdi</div>
     </div>
 
     <script>
