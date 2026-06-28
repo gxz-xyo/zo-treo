@@ -68,65 +68,7 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== GIẢI CAPTCHA (API MỚI) ==================
-CAPTCHA_API_KEY = "aae9ea8c240a1f0e5322747c32093a58"
-
-def solve_captcha(sitekey, pageurl):
-    """Giải captcha bằng anticapcha.top - gọi API thật"""
-    # Xác định loại captcha
-    if sitekey.startswith('6L'):
-        method = "recaptcha"
-        print(f"[CAPTCHA] Nhận diện ReCAPTCHA v2 - sitekey: {sitekey}")
-    else:
-        method = "hcaptcha"
-        print(f"[CAPTCHA] Nhận diện hCaptcha - sitekey: {sitekey}")
-    
-    create_url = "https://api.anticapcha.top/in.php"
-    data = {
-        "key": CAPTCHA_API_KEY,
-        "method": method,
-        "sitekey": sitekey,
-        "pageurl": pageurl,
-        "json": 1
-    }
-    
-    try:
-        # Gửi yêu cầu tạo captcha
-        resp = requests.post(create_url, data=data, timeout=30)
-        result = resp.json()
-        print(f"[CAPTCHA] Tạo job: {result}")
-        
-        if result.get('status') == 1:
-            request_id = result.get('request')
-            poll_url = "https://api.anticapcha.top/res.php"
-            
-            # Poll đến khi có kết quả
-            for _ in range(20):  # 20 lần * 5s = 100 giây
-                time.sleep(5)
-                poll_data = {
-                    "key": CAPTCHA_API_KEY,
-                    "action": "get",
-                    "id": request_id,
-                    "json": 1
-                }
-                poll_resp = requests.get(poll_url, params=poll_data, timeout=15)
-                poll_result = poll_resp.json()
-                print(f"[CAPTCHA] Poll {_+1}: {poll_result}")
-                
-                if poll_result.get('status') == 1:
-                    return poll_result.get('request')
-                elif poll_result.get('status') == 0 and poll_result.get('request') == 'CAPCHA_NOT_READY':
-                    continue
-                else:
-                    break
-        else:
-            print(f"[CAPTCHA] Tạo job thất bại: {result}")
-        return None
-    except Exception as e:
-        print(f"[CAPTCHA] Lỗi: {e}")
-        return None
-
-# ================== GIAO DIỆN HỆ THỐNG ĐĂNG NHẬP ==================
+# ================== GIAO DIỆN ĐĂNG NHẬP ==================
 HTML_AUTH = """
 <!DOCTYPE html>
 <html>
@@ -190,7 +132,7 @@ HTML_AUTH = """
 </html>
 """
 
-# ================== GIAO DIỆN DASHBOARD ĐA TAB ==================
+# ================== GIAO DIỆN DASHBOARD (ĐÃ SỬA DONATE) ==================
 HTML_MAIN = """
 <!DOCTYPE html>
 <html>
@@ -265,7 +207,7 @@ HTML_MAIN = """
         <div class="user-tag">Admin: @{{ current_user }}</div>
         <a href="#" class="nav-link active-link" onclick="switchTab('treo', this)">🎤 Treo Voice</a>
         <a href="#" class="nav-link" onclick="switchTab('saved', this)">💾 Tài khoản đã lưu</a>
-        <a href="#" class="nav-link" onclick="switchTab('tools', this)">🛠️ Tiện ích Token</a>
+        <a href="#" class="nav-link" onclick="switchTab('donate', this)">❤️ Donate</a>
         <a href="/logout" class="logout">🚪 Đăng xuất</a>
     </div>
 
@@ -359,61 +301,29 @@ HTML_MAIN = """
             </div>
         </div>
 
-        <div id="tab-tools" class="tab-content">
-            
-            {% if not tool_token %}
+        <!-- TAB DONATE (THAY THẾ TIỆN ÍCH) -->
+        <div id="tab-donate" class="tab-content">
             <div class="card">
-                <div class="card-title">BƯỚC 1: KIỂM TRA TOKEN</div>
-                <p style="font-size:12px; color:#85929e; margin-bottom:15px;">Nhập Token để máy chủ tải thông tin tài khoản của bạn trước khi đổi.</p>
-                <form method="POST" action="/check_token">
-                    <div class="input-group">
-                        <label>Discord Token</label>
-                        <input type="text" name="tool_token" required placeholder="Nhập Token của bạn...">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%;">🔍 KIỂM TRA & KẾT NỐI</button>
-                </form>
-            </div>
-            
-            {% else %}
-            <div class="card">
-                <div class="card-title">BƯỚC 2: HỒ SƠ TÀI KHOẢN (ĐÃ LOG)</div>
-                
-                <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #2f3e46;">
-                    {% if tool_user.avatar %}
-                    <img src="https://cdn.discordapp.com/avatars/{{ tool_user.id }}/{{ tool_user.avatar }}.png" style="width:60px; height:60px; border-radius:50%; border:2px solid #66fcf1; object-fit:cover;">
-                    {% else %}
-                    <div style="width:60px; height:60px; border-radius:50%; background:#2f3e46; display:flex; justify-content:center; align-items:center; font-size:24px;">👤</div>
-                    {% endif %}
-                    <div>
-                        <div style="color:#fff; font-weight:bold; font-size:16px;">{{ tool_user.global_name or tool_user.username }}</div>
-                        <div style="color:#85929e; font-size:12px;">@{{ tool_user.username }}</div>
+                <div class="card-title">💖 Ủng hộ phát triển công cụ</div>
+                <p style="color: #85929e; font-size: 14px; line-height: 1.6; text-align: center;">
+                    Cảm ơn bạn đã sử dụng <b style="color: #66fcf1;">Za Tools</b>!<br>
+                    Nếu bạn thấy công cụ hữu ích, hãy ủng hộ admin để duy trì phát triển.
+                </p>
+                <div style="text-align: center; margin: 20px 0;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MB Bank - 1628012010 - Phan Tran Dang Khoi" 
+                         alt="QR ủng hộ" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #66fcf1;">
+                    <div style="margin-top: 12px; color: #c5a059; font-size: 14px;">
+                        <b>Ngân hàng:</b> MB Bank<br>
+                        <b>Số tài khoản:</b> 1628012010<br>
+                        <b>Chủ tài khoản:</b> Phan Tran Dang Khoi
                     </div>
                 </div>
-                
-                <form method="POST" action="/update_discord_profile" enctype="multipart/form-data">
-                    <div class="input-group">
-                        <label>Tên hiển thị mới (Global Name)</label>
-                        <input type="text" name="new_global_name" placeholder="Để trống nếu không đổi">
-                    </div>
-                    <div class="input-group">
-                        <label>Tiểu sử mới (About me)</label>
-                        <input type="text" name="new_bio" placeholder="Để trống nếu không đổi">
-                    </div>
-                    <div class="input-group">
-                        <label>Avatar mới (Chọn ảnh)</label>
-                        <input type="file" name="new_avatar" accept="image/png, image/jpeg, image/gif" style="background: transparent; border: 1px dashed #2f3e46; padding: 10px; cursor: pointer;">
-                    </div>
-                    <button type="submit" class="btn btn-success" style="width:100%; margin-bottom:10px;">🔄 ÁP DỤNG THAY ĐỔI</button>
-                </form>
-                
-                <form method="POST" action="/clear_token">
-                    <button type="submit" class="btn btn-danger" style="width:100%; padding:12px;">❌ ĐÓNG TOKEN NÀY</button>
-                </form>
+                <p style="color: #566573; font-size: 12px; text-align: center; border-top: 1px solid #2f3e46; padding-top: 12px;">
+                    Mọi đóng góp đều được trân trọng! ❤️
+                </p>
             </div>
-            {% endif %}
-            
         </div>
-        
+
         <div style="text-align:center; margin-top:20px; font-size:12px;">
             <a href="https://t.me/thiendangcuaanh" style="color:#0088cc; font-weight:bold; text-decoration:none;">Hỗ trợ lỗi (Telegram)</a>
             <div style="color:#566573; margin-top:5px;">&copy; 2026 dangkhoi Tools.</div>
@@ -628,14 +538,11 @@ def index():
         
     saved_profiles = get_saved_profiles(usr)
     
-    tool_token = session.get('tool_token')
-    tool_user = session.get('tool_user', {})
-    
     flash_msg = session.pop('flash_msg', None)
     flash_type = session.pop('flash_type', 'success')
     active_tab = request.args.get('tab', 'None')
 
-    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots, current_user=usr, saved_profiles=saved_profiles, tool_token=tool_token, tool_user=tool_user, flash_msg=flash_msg, flash_type=flash_type, active_tab=active_tab)
+    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots, current_user=usr, saved_profiles=saved_profiles, flash_msg=flash_msg, flash_type=flash_type, active_tab=active_tab)
 
 @app.route('/start', methods=['POST'])
 def start_bot_route():
@@ -727,125 +634,6 @@ def stop_bot_route():
         user_bots[usr][bot_key]['running'] = False
         del user_bots[usr][bot_key]
     return redirect(url_for('index', tab='treo'))
-
-# ================== CÁC LUỒNG TOOLS TIỆN ÍCH ==================
-@app.route('/check_token', methods=['POST'])
-def check_token():
-    if 'username' not in session: return redirect(url_for('login'))
-    token = request.form.get('tool_token', '').strip()
-    headers = {"Authorization": token}
-    try:
-        r = requests.get("https://discord.com/api/v9/users/@me", headers=headers, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            session['tool_token'] = token
-            session['tool_user'] = {
-                'username': data.get('username'), 'global_name': data.get('global_name'),
-                'bio': data.get('bio'), 'avatar': data.get('avatar'), 'id': data.get('id')
-            }
-            session['flash_msg'] = "Log Token thành công!"
-            session['flash_type'] = "success"
-        else:
-            session['flash_msg'] = "Token chết hoặc không hợp lệ!"
-            session['flash_type'] = "error"
-    except:
-        session['flash_msg'] = "Lỗi kết nối đến máy chủ Discord!"
-        session['flash_type'] = "error"
-    return redirect(url_for('index', tab='tools'))
-
-@app.route('/clear_token', methods=['POST'])
-def clear_token():
-    session.pop('tool_token', None)
-    session.pop('tool_user', None)
-    return redirect(url_for('index', tab='tools'))
-
-@app.route('/update_discord_profile', methods=['POST'])
-def update_discord_profile():
-    if 'username' not in session or 'tool_token' not in session:
-        return redirect(url_for('login'))
-    token = session['tool_token']
-    g_name = request.form.get('new_global_name', '').strip()
-    bio = request.form.get('new_bio', '').strip()
-    avatar_file = request.files.get('new_avatar')
-
-    payload = {}
-    if g_name: payload["global_name"] = g_name
-    if bio: payload["bio"] = bio
-    if avatar_file and avatar_file.filename:
-        try:
-            img_data = avatar_file.read()
-            b64_img = base64.b64encode(img_data).decode('utf-8')
-            ext = avatar_file.filename.split('.')[-1].lower()
-            mime = f"image/{ext}" if ext in ['png', 'gif'] else "image/jpeg"
-            payload["avatar"] = f"data:{mime};base64,{b64_img}"
-        except:
-            session['flash_msg'] = "Lỗi xử lý ảnh!"
-            session['flash_type'] = "error"
-            return redirect(url_for('index', tab='tools'))
-
-    if not payload:
-        session['flash_msg'] = "Chưa có thay đổi nào."
-        session['flash_type'] = "error"
-        return redirect(url_for('index', tab='tools'))
-
-    headers = {"Authorization": token, "Content-Type": "application/json"}
-    
-    # Lần 1: Gửi request
-    r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
-    
-    # Nếu bị captcha
-    if r.status_code == 400 and 'captcha' in r.text.lower():
-        session['flash_msg'] = "⏳ Đang giải captcha, vui lòng chờ..."
-        session['flash_type'] = "success"
-        
-        # Lấy thông tin captcha
-        error_data = r.json()
-        captcha_sitekey = error_data.get('captcha_sitekey', 'f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34')
-        captcha_rqtoken = error_data.get('captcha_rqtoken')
-        
-        # Giải captcha
-        captcha_solution = solve_captcha(captcha_sitekey, "https://discord.com/api/v9/users/@me")
-        
-        if captcha_solution:
-            # Gửi lại với captcha
-            headers["X-Captcha-Key"] = captcha_solution
-            if captcha_rqtoken:
-                payload["captcha_rqtoken"] = captcha_rqtoken
-            
-            r2 = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
-            if r2.status_code == 200:
-                session['flash_msg'] = "Cập nhật thành công sau captcha!"
-                session['flash_type'] = "success"
-                data = r2.json()
-                session['tool_user'] = {
-                    'username': data.get('username'),
-                    'global_name': data.get('global_name'),
-                    'bio': data.get('bio'),
-                    'avatar': data.get('avatar'),
-                    'id': data.get('id')
-                }
-            else:
-                session['flash_msg'] = f"Vẫn lỗi sau captcha: {r2.text[:100]}"
-                session['flash_type'] = "error"
-        else:
-            session['flash_msg'] = "❌ Không giải được captcha. Kiểm tra API key hoặc số dư."
-            session['flash_type'] = "error"
-    elif r.status_code == 200:
-        session['flash_msg'] = "Cập nhật thành công!"
-        session['flash_type'] = "success"
-        data = r.json()
-        session['tool_user'] = {
-            'username': data.get('username'),
-            'global_name': data.get('global_name'),
-            'bio': data.get('bio'),
-            'avatar': data.get('avatar'),
-            'id': data.get('id')
-        }
-    else:
-        session['flash_msg'] = f"Lỗi cập nhật: {r.text[:100]}"
-        session['flash_type'] = "error"
-    
-    return redirect(url_for('index', tab='tools'))
 
 @app.route('/refresh', methods=['POST'])
 def refresh(): return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
