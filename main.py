@@ -6,18 +6,19 @@ import requests
 import websocket
 import sys
 import os
+import random
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Lưu trạng thái các bot theo session_id
-bots = {}  # session_id -> {"thread": thread, "ws": ws, "connected": bool, "log": list}
+bots = {}
 
 HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ZO Treo - Barra Edition</title>
+    <title>ZO Treo PRO - Barra Edition</title>
     <style>
         body { background: #1a1a2e; color: #eee; font-family: Arial; padding: 20px; }
         .container { max-width: 600px; margin: auto; background: #16213e; padding: 30px; border-radius: 10px; }
@@ -28,12 +29,11 @@ HTML = """
         .status { padding: 8px; border-radius: 5px; margin: 10px 0; }
         .online { background: #2e7d32; }
         .offline { background: #c62828; }
-        .info { color: #90caf9; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔥 ZO TREO - SHARE VERSION 🔥</h1>
+        <h1>🔥 ZO TREO PRO 🔥</h1>
         <form method="POST">
             <label>🔑 Token Discord</label>
             <input type="text" name="token" placeholder="Token của mày" required>
@@ -54,19 +54,18 @@ HTML = """
         <form method="POST" action="/stop" style="margin-top:10px;">
             <button type="submit" class="btn" style="background:#c62828;">⏹️ DỪNG TREO</button>
         </form>
-        <form method="POST" action="/refresh" style="margin-top:5px;">
+        <form method="POST" action="/refresh">
             <button type="submit" class="btn" style="background:#1565c0;">🔄 REFRESH LOG</button>
         </form>
     </div>
     <script>
-        setInterval(() => { location.reload(); }, 30000);
+        setInterval(() => { location.reload(); }, 15000);
     </script>
 </body>
 </html>
 """
 
 def run_bot(session_id, config):
-    """Chạy bot treo trong thread riêng."""
     token = config['token']
     guild_id = config['guild_id']
     channel_id = config['channel_id']
@@ -81,9 +80,22 @@ def run_bot(session_id, config):
     heartbeat_interval = 41250
     connected = False
     running = True
+    session_id_discord = None
+    reconnect_attempts = 0
+    max_reconnect_attempts = 20
+
+    def add_log(msg):
+        if session_id in bots:
+            bots[session_id]['log'].append(f"[{time.strftime('%H:%M:%S')}] {msg}")
+            if len(bots[session_id]['log']) > 100:
+                bots[session_id]['log'] = bots[session_id]['log'][-100:]
+
+    def update_status(status):
+        if session_id in bots:
+            bots[session_id]['connected'] = status
 
     def send_voice_update(ws):
-        ws.send(json.dumps({
+        voice_payload = {
             "op": 4,
             "d": {
                 "guild_id": guild_id,
@@ -93,19 +105,25 @@ def run_bot(session_id, config):
                 "self_video": video,
                 "self_stream": stream
             }
-        }))
+        }
+        ws.send(json.dumps(voice_payload))
+        add_log("📤 Đã gửi VOICE_STATE_UPDATE")
 
     def on_message(ws, message):
-        nonlocal last_seq, connected
+        nonlocal last_seq, connected, session_id_discord, heartbeat_interval
         try:
             data = json.loads(message)
         except:
             return
         last_seq = data.get('s', last_seq)
         op = data.get('op')
-        if op == 10:
+        t = data.get('t')
+
+        if op == 10:  # Hello
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-            ws.send(json.dumps({
+            add_log(f"💓 Heartbeat interval: {heartbeat_interval}s")
+            # Identify
+            identify_payload = {
                 "op": 2,
                 "d": {
                     "token": token,
@@ -113,36 +131,59 @@ def run_bot(session_id, config):
                     "compress": False,
                     "large_threshold": 50
                 }
-            }))
-            add_log(session_id, "📤 Đã gửi IDENTIFY")
+            }
+            ws.send(json.dumps(identify_payload))
+            add_log("📤 Đã gửi IDENTIFY")
+
+        elif op == 11:  # Heartbeat ACK
+            pass
+
         elif op == 0:
-            t = data.get('t')
             if t == 'READY':
-                add_log(session_id, f"🎯 Đã xác thực: {data['d']['user']['username']}")
+                session_id_discord = data['d']['session_id']
+                add_log(f"🎯 Session ID: {session_id_discord}")
+                # Gửi voice update lần đầu
                 send_voice_update(ws)
+
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
+                # Kiểm tra nếu channel_id khớp với target
                 if d.get('channel_id') == channel_id:
-                    connected = True
-                    add_log(session_id, "✅ Đã vào phòng thành công! Đang treo...")
-                    update_status(session_id, True)
+                    if not connected:
+                        connected = True
+                        update_status(True)
+                        add_log("✅ Đã vào phòng thành công! Đang treo...")
                 elif d.get('channel_id') is None and connected:
+                    # Bị rời phòng (do lỗi hoặc Discord kick)
                     connected = False
-                    add_log(session_id, "⚠️ Bị rời phòng, gửi lại voice state...")
-                    send_voice_update(ws)
-        elif op == 9:
-            add_log(session_id, "⚠️ Session invalid, sẽ reconnect...")
-            ws.close()
+                    update_status(False)
+                    add_log("⚠️ Bị rời phòng! Đang thử vào lại...")
+                    # Thử vào lại sau 1 giây
+                    time.sleep(1)
+                    if ws and ws.keep_running:
+                        send_voice_update(ws)
 
-    def on_close(ws, code, msg):
-        add_log(session_id, f"🔌 Mất kết nối (code {code}), reconnect sau 3s...")
-        time.sleep(3)
-        if running:
-            start_ws()
+        elif op == 9:  # Invalid session
+            add_log("⚠️ Session invalid! Sẽ identify lại...")
+            # Đóng kết nối để reconnect
+            ws.close()
 
     def on_error(ws, error):
         if "Connection closed" not in str(error):
-            add_log(session_id, f"💥 Lỗi: {error}")
+            add_log(f"💥 Lỗi: {error}")
+
+    def on_close(ws, close_code, close_msg):
+        nonlocal reconnect_attempts
+        if connected:
+            connected = False
+            update_status(False)
+        add_log(f"🔌 Mất kết nối (code {close_code}), reconnect sau 5s...")
+        time.sleep(5)
+        if running:
+            start_ws()
+
+    def on_open(ws):
+        add_log("🔓 WebSocket mở")
 
     def heartbeat_loop():
         nonlocal ws, last_seq
@@ -151,39 +192,57 @@ def run_bot(session_id, config):
             if ws and ws.keep_running:
                 try:
                     ws.send(json.dumps({"op": 1, "d": last_seq}))
+                except Exception as e:
+                    add_log(f"💓 Heartbeat lỗi: {e}")
+
+    def keep_alive_loop():
+        # Mỗi 20 giây gửi lại voice update để duy trì trạng thái
+        while running:
+            time.sleep(20)
+            if ws and ws.keep_running and connected:
+                try:
+                    send_voice_update(ws)
+                    add_log("⏳ Refresh voice state")
                 except:
                     pass
 
-    def keep_alive_loop():
-        while running:
-            time.sleep(30)
-            if ws and ws.keep_running and connected:
-                send_voice_update(ws)
-
     def start_ws():
-        nonlocal ws
+        nonlocal ws, reconnect_attempts
+        reconnect_attempts += 1
+        if reconnect_attempts > max_reconnect_attempts:
+            add_log("❌ Quá số lần reconnect, dừng bot.")
+            update_status(False)
+            return
+
         try:
             gateway = requests.get("https://discord.com/api/v9/gateway").json()['url']
-        except:
-            add_log(session_id, "❌ Không lấy được gateway Discord")
+        except Exception as e:
+            add_log(f"❌ Không lấy được gateway: {e}")
+            time.sleep(10)
+            if running:
+                start_ws()
             return
+
         ws = websocket.WebSocketApp(
             gateway + "/?v=9&encoding=json",
+            on_open=on_open,
             on_message=on_message,
-            on_close=on_close,
-            on_error=on_error
+            on_error=on_error,
+            on_close=on_close
         )
+
+        # Chạy heartbeat và keep-alive trong thread riêng
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         threading.Thread(target=keep_alive_loop, daemon=True).start()
+
+        # Chạy WebSocket (blocking)
         ws.run_forever()
 
-    try:
-        start_ws()
-    except Exception as e:
-        add_log(session_id, f"❌ Lỗi: {e}")
-    finally:
-        update_status(session_id, False)
-        add_log(session_id, "🛑 Bot đã dừng.")
+    # Bắt đầu
+    add_log("🚀 Khởi tạo bot PRO...")
+    start_ws()
+    add_log("🛑 Bot đã dừng hẳn.")
+    update_status(False)
 
 def add_log(session_id, msg):
     if session_id in bots:
@@ -211,6 +270,7 @@ def index():
         video = 'video' in request.form
         stream = 'stream' in request.form
 
+        # Dừng bot cũ
         if session_id in bots:
             bots[session_id]['running'] = False
             time.sleep(0.5)
@@ -230,10 +290,9 @@ def index():
         bots[session_id] = {
             'thread': thread,
             'connected': False,
-            'log': [f"🚀 Khởi tạo bot với token: {token[:10]}..."],
+            'log': [f"🚀 Khởi tạo bot PRO với token: {token[:10]}..."],
             'running': True
         }
-        add_log(session_id, "🔁 Bot đang chạy...")
 
     log = bots.get(session_id, {}).get('log', [])
     connected = bots.get(session_id, {}).get('connected', False)
