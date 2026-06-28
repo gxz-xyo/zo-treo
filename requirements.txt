@@ -3,3 +3,4 @@ requests
 websocket-client
 pymongo
 dnspython
+Werkzeug
