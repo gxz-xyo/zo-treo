@@ -5,13 +5,14 @@ import time
 import requests
 import websocket
 import os
+import base64
 from pymongo import MongoClient
 from requests_oauthlib import OAuth2Session
 from werkzeug.security import generate_password_hash, check_password_hash
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_secret_key_v9_bat_tu_cua_dangkhoi"
-
+app.secret_key = "za_tools_secret_key_v10_bat_tu_cua_dangkhoi"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE MONGODB ==================
@@ -22,9 +23,9 @@ try:
     db = client["za_tools_database"]
     accounts_collection = db["accounts"]
     users_collection = db["users"]
-    saved_profiles_collection = db["saved_profiles"] # Bảng mới lưu cấu hình tĩnh
+    saved_profiles_collection = db["saved_profiles"]
     client.server_info()
-    print("✅ MongoDB OK! Đã kích hoạt Za Tools V9 - Dashboard Mode.")
+    print("✅ MongoDB OK! Đã kích hoạt Za Tools V10 - Tối Thượng.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -56,6 +57,16 @@ def get_saved_profiles(username):
     try:
         return list(saved_profiles_collection.find({"owner": username}))
     except: return []
+
+def save_storage_item(bot_key, config, username):
+    try:
+        config["owner"] = username
+        accounts_collection.update_one({"bot_key": bot_key}, {"$set": config}, upsert=True)
+    except: pass
+
+def delete_storage_item(bot_key, username):
+    try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
+    except: pass
 
 # ================== GIAO DIỆN HỆ THỐNG ĐĂNG NHẬP ==================
 HTML_AUTH = """
@@ -90,7 +101,7 @@ HTML_AUTH = """
 <body>
     <div class="container">
         <div class="logo">Za Tools</div>
-        <div class="sub">Hệ thống phân tách tài khoản treo voice thông minh</div>
+        <div class="sub">Hệ thống treo voice & quản lý tài khoản tối thượng</div>
         {% if error %}<div class="msg error">❌ {{ error }}</div>{% endif %}
         {% if success %}<div class="msg success">✅ {{ success }}</div>{% endif %}
 
@@ -121,7 +132,7 @@ HTML_AUTH = """
 </html>
 """
 
-# ================== GIAO DIỆN DASHBOARD ĐA TAB (SPA) ==================
+# ================== GIAO DIỆN DASHBOARD ĐA TAB ==================
 HTML_MAIN = """
 <!DOCTYPE html>
 <html>
@@ -133,7 +144,6 @@ HTML_MAIN = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: #0b0c10; color: #fff; overflow-x: hidden; }
         
-        /* Navbar & Sidebar */
         .navbar { background: #151a21; padding: 15px 20px; display: flex; align-items: center; border-bottom: 1px solid #2f3e46; position: sticky; top: 0; z-index: 100; }
         .menu-btn { background: none; border: none; color: #66fcf1; font-size: 24px; cursor: pointer; margin-right: 15px; }
         .logo { color: #66fcf1; font-size: 20px; font-weight: 800; }
@@ -146,13 +156,11 @@ HTML_MAIN = """
         .sidebar .logout { color: #e74c3c; margin-top: 20px; border-top: 1px solid #2f3e46; }
         .user-tag { text-align: center; color: #c5a059; font-size: 13px; margin-bottom: 20px; }
 
-        /* Bố cục chính */
         .container { max-width: 500px; margin: 20px auto; padding: 0 15px; }
         .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Card & UI Components */
         .card { background: #151a21; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #2f3e46; }
         .card-title { color: #85929e; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 15px; letter-spacing: 1px; }
         .input-group { margin-bottom: 15px; }
@@ -170,9 +178,9 @@ HTML_MAIN = """
         .btn-primary:hover { background: #66fcf1; color: #0b0c10; }
         .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid #2ecc71; color: #2ecc71; }
         .btn-success:hover { background: #2ecc71; color: #000; }
-        .btn-danger { padding: 8px 14px; background: rgba(231, 76, 60, 0.1); border: 1px solid #e74c3c; border-radius: 6px; color: #e74c3c; font-size: 12px; cursor: pointer; }
-        
-        /* Items & Logs */
+        .btn-danger { padding: 10px 14px; background: rgba(231, 76, 60, 0.1); border: 1px solid #e74c3c; border-radius: 6px; color: #e74c3c; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-danger:hover { background: #e74c3c; color: #fff; }
+
         .account-card { background: #0b0c10; border-radius: 8px; padding: 14px; margin: 10px 0; border: 1px solid #2f3e46; display: flex; justify-content: space-between; align-items: center; }
         .account-card .name { font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 4px;}
         .log-box { background: #0b0c10; border-radius: 8px; padding: 12px; max-height: 160px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #39ff14; border: 1px solid #2f3e46; margin-bottom: 12px; white-space: pre-wrap; }
@@ -181,7 +189,6 @@ HTML_MAIN = """
         .msg.success { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
         .msg.error { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid #e74c3c; }
 
-        /* Overlay */
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; display: none; }
         .overlay.active { display: block; }
     </style>
@@ -200,7 +207,7 @@ HTML_MAIN = """
         <div class="user-tag">Admin: @{{ current_user }}</div>
         <a href="#" class="nav-link active-link" onclick="switchTab('treo', this)">🎤 Treo Voice</a>
         <a href="#" class="nav-link" onclick="switchTab('saved', this)">💾 Tài khoản đã lưu</a>
-        <a href="#" class="nav-link" onclick="switchTab('tools', this)">🛠️ Tools tiện ích</a>
+        <a href="#" class="nav-link" onclick="switchTab('tools', this)">🛠️ Tiện ích Token</a>
         <a href="/logout" class="logout">🚪 Đăng xuất</a>
     </div>
 
@@ -215,8 +222,8 @@ HTML_MAIN = """
                 <div class="card">
                     <div class="card-title">Thiết lập kết nối</div>
                     <div class="input-group">
-                        <label>Tên Cấu Hình Lại (Nếu muốn Lưu)</label>
-                        <input type="text" name="profile_name" placeholder="Ví dụ: Acc Cày Cấp (Không bắt buộc nếu chỉ chạy)">
+                        <label>Tên gợi nhớ (Nếu muốn Lưu)</label>
+                        <input type="text" name="profile_name" placeholder="Ví dụ: Acc Cày Cấp">
                     </div>
                     <div class="input-group">
                         <label>Discord Token</label>
@@ -238,7 +245,7 @@ HTML_MAIN = """
                     </div>
                     <div class="btn-flex">
                         <button type="submit" formaction="/start" class="btn btn-primary">🚀 CHẠY NGAY</button>
-                        <button type="submit" formaction="/save_profile" class="btn btn-success">💾 LƯU CẤU HÌNH</button>
+                        <button type="submit" formaction="/save_profile" class="btn btn-success">💾 LƯU LẠI</button>
                     </div>
                 </div>
             </form>
@@ -289,20 +296,43 @@ HTML_MAIN = """
                 </div>
                 {% endfor %}
                 {% if not saved_profiles %}
-                <div style="text-align:center; font-size:13px; color:#85929e; padding: 20px 0;">Bạn chưa lưu cấu hình nào. Hãy sang mục Treo Voice nhập thông tin và bấm Lưu nhé.</div>
+                <div style="text-align:center; font-size:13px; color:#85929e; padding: 20px 0;">Bạn chưa lưu cấu hình nào. Hãy nhập thông tin và bấm Lưu.</div>
                 {% endif %}
             </div>
         </div>
 
         <div id="tab-tools" class="tab-content">
+            
+            {% if not tool_token %}
             <div class="card">
-                <div class="card-title">Cập nhật thông tin Discord</div>
-                <p style="font-size:12px; color:#85929e; margin-bottom:15px;">Dùng Token để thay đổi thông tin hồ sơ Discord của bạn nhanh chóng.</p>
-                <form method="POST" action="/update_discord_profile">
+                <div class="card-title">BƯỚC 1: KIỂM TRA TOKEN</div>
+                <p style="font-size:12px; color:#85929e; margin-bottom:15px;">Nhập Token để máy chủ tải thông tin tài khoản của bạn trước khi đổi.</p>
+                <form method="POST" action="/check_token">
                     <div class="input-group">
-                        <label>Discord Token (Bắt buộc)</label>
-                        <input type="text" name="tool_token" required>
+                        <label>Discord Token</label>
+                        <input type="text" name="tool_token" required placeholder="Nhập Token của bạn...">
                     </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">🔍 KIỂM TRA & KẾT NỐI</button>
+                </form>
+            </div>
+            
+            {% else %}
+            <div class="card">
+                <div class="card-title">BƯỚC 2: HỒ SƠ TÀI KHOẢN (ĐÃ LOG)</div>
+                
+                <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #2f3e46;">
+                    {% if tool_user.avatar %}
+                    <img src="https://cdn.discordapp.com/avatars/{{ tool_user.id }}/{{ tool_user.avatar }}.png" style="width:60px; height:60px; border-radius:50%; border:2px solid #66fcf1; object-fit:cover;">
+                    {% else %}
+                    <div style="width:60px; height:60px; border-radius:50%; background:#2f3e46; display:flex; justify-content:center; align-items:center; font-size:24px;">👤</div>
+                    {% endif %}
+                    <div>
+                        <div style="color:#fff; font-weight:bold; font-size:16px;">{{ tool_user.global_name or tool_user.username }}</div>
+                        <div style="color:#85929e; font-size:12px;">@{{ tool_user.username }}</div>
+                    </div>
+                </div>
+                
+                <form method="POST" action="/update_discord_profile" enctype="multipart/form-data">
                     <div class="input-group">
                         <label>Tên hiển thị mới (Global Name)</label>
                         <input type="text" name="new_global_name" placeholder="Để trống nếu không đổi">
@@ -311,9 +341,19 @@ HTML_MAIN = """
                         <label>Tiểu sử mới (About me)</label>
                         <input type="text" name="new_bio" placeholder="Để trống nếu không đổi">
                     </div>
-                    <button type="submit" class="btn btn-primary">🔄 ÁP DỤNG THAY ĐỔI</button>
+                    <div class="input-group">
+                        <label>Avatar mới (Chọn ảnh)</label>
+                        <input type="file" name="new_avatar" accept="image/png, image/jpeg, image/gif" style="background: transparent; border: 1px dashed #2f3e46; padding: 10px; cursor: pointer;">
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width:100%; margin-bottom:10px;">🔄 ÁP DỤNG THAY ĐỔI</button>
+                </form>
+                
+                <form method="POST" action="/clear_token">
+                    <button type="submit" class="btn btn-danger" style="width:100%; padding:12px;">❌ ĐÓNG TOKEN NÀY</button>
                 </form>
             </div>
+            {% endif %}
+            
         </div>
         
         <div style="text-align:center; margin-top:20px; font-size:12px;">
@@ -330,23 +370,18 @@ HTML_MAIN = """
         }
 
         function switchTab(tabId, el) {
-            // Chuyển nội dung
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + tabId).classList.add('active');
             
-            // Đổi màu menu
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-link'));
             if(el) el.classList.add('active-link');
             
-            // Đóng menu nếu ở Mobile
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('overlay').classList.remove('active');
             
-            // Ghi nhớ tab
             localStorage.setItem('za_active_tab', tabId);
         }
 
-        // Tự động load Tab cũ hoặc Tab được server yêu cầu
         window.onload = () => {
             let reqTab = '{{ active_tab }}';
             let tabToLoad = reqTab !== 'None' ? reqTab : (localStorage.getItem('za_active_tab') || 'treo');
@@ -535,11 +570,15 @@ def index():
         
     saved_profiles = get_saved_profiles(usr)
     
+    # Truy xuất tool session data
+    tool_token = session.get('tool_token')
+    tool_user = session.get('tool_user', {})
+    
     flash_msg = session.pop('flash_msg', None)
     flash_type = session.pop('flash_type', 'success')
     active_tab = request.args.get('tab', 'None')
 
-    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots, current_user=usr, saved_profiles=saved_profiles, flash_msg=flash_msg, flash_type=flash_type, active_tab=active_tab)
+    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=active_bots, current_user=usr, saved_profiles=saved_profiles, tool_token=tool_token, tool_user=tool_user, flash_msg=flash_msg, flash_type=flash_type, active_tab=active_tab)
 
 @app.route('/start', methods=['POST'])
 def start_bot_route():
@@ -548,8 +587,13 @@ def start_bot_route():
     bot_key = f"{request.form['guild_id'].strip()}_{request.form['channel_id'].strip()}"
     config = {'bot_key': bot_key, 'token': request.form['token'].strip(), 'guild_id': request.form['guild_id'].strip(), 'channel_id': request.form['channel_id'].strip(), 'mute': 'mute' in request.form, 'deaf': 'deaf' in request.form, 'video': 'video' in request.form, 'stream': 'stream' in request.form}
     save_storage_item(bot_key, config, usr)
+    
     if usr not in user_bots: user_bots[usr] = {}
-    user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang thiết lập..."], 'running': True}
+    if bot_key in user_bots[usr]: 
+        user_bots[usr][bot_key]['running'] = False # Giết luồng cũ để tránh xung đột
+        time.sleep(0.5)
+        
+    user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang thiết lập..."], 'running': True, 'display_name': 'Đang khởi động...'}
     threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
     return redirect(url_for('index', tab='treo'))
 
@@ -569,26 +613,53 @@ def save_profile():
     session['flash_type'] = "success"
     return redirect(url_for('index', tab='saved'))
 
+# ================= FIX LỖI 500 Ở MỤC ĐÃ LƯU =================
 @app.route('/start_saved', methods=['POST'])
 def start_saved():
     if 'username' not in session: return redirect(url_for('login'))
     usr = session['username']
     profile_id = request.form.get('profile_id')
-    prof = saved_profiles_collection.find_one({"owner": usr, "_id": profile_id})
+    
+    # Bắt lỗi ObjectId nếu tài khoản lưu ở bản cũ
+    try:
+        prof = saved_profiles_collection.find_one({"owner": usr, "_id": profile_id})
+        if not prof:
+            prof = saved_profiles_collection.find_one({"owner": usr, "_id": ObjectId(profile_id)})
+    except: prof = None
+
     if prof:
-        bot_key = f"{prof['guild_id']}_{prof['channel_id']}"
-        config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
-        config['bot_key'] = bot_key
-        save_storage_item(bot_key, config, usr)
-        if usr not in user_bots: user_bots[usr] = {}
-        user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang khởi động..."], 'running': True}
-        threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
+        try:
+            bot_key = f"{prof['guild_id']}_{prof['channel_id']}"
+            config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
+            config['bot_key'] = bot_key
+            save_storage_item(bot_key, config, usr)
+            
+            if usr not in user_bots: user_bots[usr] = {}
+            if bot_key in user_bots[usr]: 
+                user_bots[usr][bot_key]['running'] = False # Giết luồng bị trùng
+                time.sleep(0.5)
+                
+            user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang khởi động..."], 'running': True, 'display_name': 'Đang kết nối...'}
+            threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
+            session['flash_msg'] = f"Đã khởi động: {prof.get('profile_name', 'Tài khoản')}"
+            session['flash_type'] = "success"
+        except Exception as e:
+            session['flash_msg'] = f"Lỗi chạy cấu hình: {e}"
+            session['flash_type'] = "error"
+    else:
+        session['flash_msg'] = "Lỗi: Không tìm thấy cấu hình này trong kho."
+        session['flash_type'] = "error"
+        
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/delete_profile', methods=['POST'])
 def delete_profile():
     if 'username' not in session: return redirect(url_for('login'))
-    saved_profiles_collection.delete_one({"owner": session['username'], "_id": request.form.get('profile_id')})
+    profile_id = request.form.get('profile_id')
+    try:
+        if not saved_profiles_collection.delete_one({"owner": session['username'], "_id": profile_id}).deleted_count:
+            saved_profiles_collection.delete_one({"owner": session['username'], "_id": ObjectId(profile_id)})
+    except: pass
     return redirect(url_for('index', tab='saved'))
 
 @app.route('/stop', methods=['POST'])
@@ -602,33 +673,83 @@ def stop_bot_route():
         del user_bots[usr][bot_key]
     return redirect(url_for('index', tab='treo'))
 
+# ================== CÁC LUỒNG TOOLS TIỆN ÍCH 2 BƯỚC ==================
+@app.route('/check_token', methods=['POST'])
+def check_token():
+    if 'username' not in session: return redirect(url_for('login'))
+    token = request.form.get('tool_token', '').strip()
+    headers = {"Authorization": token}
+    try:
+        r = requests.get("https://discord.com/api/v9/users/@me", headers=headers, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            session['tool_token'] = token
+            session['tool_user'] = {
+                'username': data.get('username'), 'global_name': data.get('global_name'),
+                'bio': data.get('bio'), 'avatar': data.get('avatar'), 'id': data.get('id')
+            }
+            session['flash_msg'] = "Log Token thành công!"
+            session['flash_type'] = "success"
+        else:
+            session['flash_msg'] = "Token chết hoặc không hợp lệ!"
+            session['flash_type'] = "error"
+    except:
+        session['flash_msg'] = "Lỗi kết nối đến máy chủ Discord!"
+        session['flash_type'] = "error"
+    return redirect(url_for('index', tab='tools'))
+
+@app.route('/clear_token', methods=['POST'])
+def clear_token():
+    session.pop('tool_token', None)
+    session.pop('tool_user', None)
+    return redirect(url_for('index', tab='tools'))
+
 @app.route('/update_discord_profile', methods=['POST'])
 def update_discord_profile():
-    if 'username' not in session: return redirect(url_for('login'))
-    token = request.form.get('tool_token').strip()
-    g_name = request.form.get('new_global_name').strip()
-    bio = request.form.get('new_bio').strip()
+    if 'username' not in session or 'tool_token' not in session: return redirect(url_for('login'))
+    token = session['tool_token']
+    g_name = request.form.get('new_global_name', '').strip()
+    bio = request.form.get('new_bio', '').strip()
+    avatar_file = request.files.get('new_avatar')
     
     payload = {}
     if g_name: payload["global_name"] = g_name
     if bio: payload["bio"] = bio
     
+    if avatar_file and avatar_file.filename:
+        try:
+            img_data = avatar_file.read()
+            b64_img = base64.b64encode(img_data).decode('utf-8')
+            ext = avatar_file.filename.split('.')[-1].lower()
+            mime = f"image/{ext}" if ext in ['png', 'gif'] else "image/jpeg"
+            payload["avatar"] = f"data:{mime};base64,{b64_img}"
+        except:
+            session['flash_msg'] = "Lỗi xử lý file ảnh! Vui lòng thử ảnh khác."
+            session['flash_type'] = "error"
+            return redirect(url_for('index', tab='tools'))
+    
     if not payload:
-        session['flash_msg'] = "Vui lòng nhập ít nhất Tên hiển thị hoặc Tiểu sử để đổi!"
+        session['flash_msg'] = "Bạn chưa thay đổi thông tin hay chọn ảnh nào."
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='tools'))
 
     headers = {"Authorization": token, "Content-Type": "application/json"}
     try:
-        r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload)
+        r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=10)
         if r.status_code == 200:
             session['flash_msg'] = "Đã cập nhật thông tin tài khoản Discord thành công!"
             session['flash_type'] = "success"
+            # Cập nhật lại giao diện người dùng
+            data = r.json()
+            session['tool_user'] = {
+                'username': data.get('username'), 'global_name': data.get('global_name'),
+                'bio': data.get('bio'), 'avatar': data.get('avatar'), 'id': data.get('id')
+            }
         else:
-            session['flash_msg'] = "Lỗi! Token không hợp lệ hoặc bị chặn."
+            session['flash_msg'] = f"Lỗi! Discord chặn: {r.text}"
             session['flash_type'] = "error"
-    except:
-        session['flash_msg'] = "Lỗi kết nối máy chủ Discord!"
+    except Exception as e:
+        session['flash_msg'] = f"Lỗi kết nối máy chủ Discord: {str(e)}"
         session['flash_type'] = "error"
     return redirect(url_for('index', tab='tools'))
 
@@ -638,13 +759,13 @@ def refresh(): return redirect(url_for('index', tab=request.form.get('tab', 'tre
 @app.route('/ping')
 def ping(): return "pong"
 
-# ================== TRANG QUẢN TRỊ ẨN CỦA DANGKHOI ==================
+# ================== TRANG QUẢN TRỊ ==================
 @app.route('/admin_dangkhoi')
 def admin_dashboard():
     total_users = users_collection.count_documents({})
     total_bots = accounts_collection.count_documents({})
     active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
-    return f"<html><body style='background:#0b0c10; color:#66fcf1; text-align:center; padding:50px; font-family:sans-serif;'><h1>👁️ MẮT THẦN DANGKHOI 👁️</h1><div style='background:#1f2833; padding:20px; border-radius:12px; display:inline-block; border:1px solid #45f3ff;'><p style='color:#fff'>👥 Users: <b style='color:#4cdf8b'>{total_users}</b></p><p style='color:#fff'>🤖 Tokens lưu database: <b style='color:#4cdf8b'>{total_bots}</b></p><p style='color:#fff'>⚡ Luồng chạy RAM: <b style='color:#4cdf8b'>{active_running}</b></p></div></body></html>"
+    return f"<html><body style='background:#0b0c10; color:#66fcf1; text-align:center; padding:50px; font-family:sans-serif;'><h1>👁️ MẮT THẦN DANGKHOI 👁️</h1><div style='background:#1f2833; padding:20px; border-radius:12px; display:inline-block; border:1px solid #45f3ff;'><p style='color:#fff'>👥 Users: <b style='color:#4cdf8b'>{total_users}</b></p><p style='color:#fff'>🤖 Tokens đang chạy: <b style='color:#4cdf8b'>{total_bots}</b></p><p style='color:#fff'>⚡ Luồng chạy RAM: <b style='color:#4cdf8b'>{active_running}</b></p></div></body></html>"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
