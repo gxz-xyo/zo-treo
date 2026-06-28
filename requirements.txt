@@ -4,3 +4,4 @@ websocket-client
 pymongo
 dnspython
 Werkzeug
+requests-oauthlib
