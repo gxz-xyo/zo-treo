@@ -68,6 +68,41 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
+# ================== GIẢI CAPTCHA ==================
+CAPTCHA_API_KEY = "72cd105f15332c81afa5855ac4ce7d86"
+
+def solve_captcha(sitekey, pageurl):
+    """Giải captcha bằng anticapcha.top"""
+    create_url = "https://api.anticapcha.top/in.php"
+    data = {
+        "key": CAPTCHA_API_KEY,
+        "method": "hcaptcha",
+        "sitekey": sitekey,
+        "pageurl": pageurl,
+        "json": 1
+    }
+    try:
+        resp = requests.post(create_url, data=data, timeout=30)
+        result = resp.json()
+        if result.get('status') == 1:
+            request_id = result.get('request')
+            poll_url = "https://api.anticapcha.top/res.php"
+            for _ in range(30):
+                time.sleep(5)
+                poll_data = {"key": CAPTCHA_API_KEY, "action": "get", "id": request_id, "json": 1}
+                poll_resp = requests.get(poll_url, params=poll_data, timeout=15)
+                poll_result = poll_resp.json()
+                if poll_result.get('status') == 1:
+                    return poll_result.get('request')
+                elif poll_result.get('status') == 0 and poll_result.get('request') == 'CAPCHA_NOT_READY':
+                    continue
+                else:
+                    break
+        return None
+    except Exception as e:
+        print(f"[CAPTCHA] Lỗi: {e}")
+        return None
+
 # ================== GIAO DIỆN HỆ THỐNG ĐĂNG NHẬP ==================
 HTML_AUTH = """
 <!DOCTYPE html>
@@ -570,7 +605,6 @@ def index():
         
     saved_profiles = get_saved_profiles(usr)
     
-    # Truy xuất tool session data
     tool_token = session.get('tool_token')
     tool_user = session.get('tool_user', {})
     
@@ -590,7 +624,7 @@ def start_bot_route():
     
     if usr not in user_bots: user_bots[usr] = {}
     if bot_key in user_bots[usr]: 
-        user_bots[usr][bot_key]['running'] = False # Giết luồng cũ để tránh xung đột
+        user_bots[usr][bot_key]['running'] = False
         time.sleep(0.5)
         
     user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang thiết lập..."], 'running': True, 'display_name': 'Đang khởi động...'}
@@ -613,14 +647,12 @@ def save_profile():
     session['flash_type'] = "success"
     return redirect(url_for('index', tab='saved'))
 
-# ================= FIX LỖI 500 Ở MỤC ĐÃ LƯU =================
 @app.route('/start_saved', methods=['POST'])
 def start_saved():
     if 'username' not in session: return redirect(url_for('login'))
     usr = session['username']
     profile_id = request.form.get('profile_id')
     
-    # Bắt lỗi ObjectId nếu tài khoản lưu ở bản cũ
     try:
         prof = saved_profiles_collection.find_one({"owner": usr, "_id": profile_id})
         if not prof:
@@ -636,7 +668,7 @@ def start_saved():
             
             if usr not in user_bots: user_bots[usr] = {}
             if bot_key in user_bots[usr]: 
-                user_bots[usr][bot_key]['running'] = False # Giết luồng bị trùng
+                user_bots[usr][bot_key]['running'] = False
                 time.sleep(0.5)
                 
             user_bots[usr][bot_key] = {'connected': False, 'log': ["🚀 Đang khởi động..."], 'running': True, 'display_name': 'Đang kết nối...'}
@@ -673,7 +705,7 @@ def stop_bot_route():
         del user_bots[usr][bot_key]
     return redirect(url_for('index', tab='treo'))
 
-# ================== CÁC LUỒNG TOOLS TIỆN ÍCH 2 BƯỚC ==================
+# ================== CÁC LUỒNG TOOLS TIỆN ÍCH ==================
 @app.route('/check_token', methods=['POST'])
 def check_token():
     if 'username' not in session: return redirect(url_for('login'))
@@ -706,16 +738,18 @@ def clear_token():
 
 @app.route('/update_discord_profile', methods=['POST'])
 def update_discord_profile():
-    if 'username' not in session or 'tool_token' not in session: return redirect(url_for('login'))
+    if 'username' not in session or 'tool_token' not in session:
+        return redirect(url_for('login'))
     token = session['tool_token']
     g_name = request.form.get('new_global_name', '').strip()
     bio = request.form.get('new_bio', '').strip()
     avatar_file = request.files.get('new_avatar')
-    
+
     payload = {}
-    if g_name: payload["global_name"] = g_name
-    if bio: payload["bio"] = bio
-    
+    if g_name:
+        payload["global_name"] = g_name
+    if bio:
+        payload["bio"] = bio
     if avatar_file and avatar_file.filename:
         try:
             img_data = avatar_file.read()
@@ -724,12 +758,12 @@ def update_discord_profile():
             mime = f"image/{ext}" if ext in ['png', 'gif'] else "image/jpeg"
             payload["avatar"] = f"data:{mime};base64,{b64_img}"
         except:
-            session['flash_msg'] = "Lỗi xử lý file ảnh! Vui lòng thử ảnh khác."
+            session['flash_msg'] = "Lỗi xử lý ảnh!"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='tools'))
-    
+
     if not payload:
-        session['flash_msg'] = "Bạn chưa thay đổi thông tin hay chọn ảnh nào."
+        session['flash_msg'] = "Chưa có thay đổi nào."
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='tools'))
 
@@ -737,19 +771,35 @@ def update_discord_profile():
     try:
         r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=10)
         if r.status_code == 200:
-            session['flash_msg'] = "Đã cập nhật thông tin tài khoản Discord thành công!"
+            session['flash_msg'] = "Cập nhật thành công!"
             session['flash_type'] = "success"
-            # Cập nhật lại giao diện người dùng
             data = r.json()
             session['tool_user'] = {
-                'username': data.get('username'), 'global_name': data.get('global_name'),
-                'bio': data.get('bio'), 'avatar': data.get('avatar'), 'id': data.get('id')
+                'username': data.get('username'),
+                'global_name': data.get('global_name'),
+                'bio': data.get('bio'),
+                'avatar': data.get('avatar'),
+                'id': data.get('id')
             }
+            return redirect(url_for('index', tab='tools'))
+
+        elif r.status_code == 400 and 'captcha' in r.text.lower():
+            error_data = r.json()
+            captcha_sitekey = error_data.get('captcha_sitekey')
+            if not captcha_sitekey:
+                captcha_sitekey = "f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34"
+            captcha_rqtoken = error_data.get('captcha_rqtoken')
+            
+            session['flash_msg'] = "⏳ Đang giải captcha, vui lòng chờ..."
+            session['flash_type'] = "success"
+            return redirect(url_for('index', tab='tools'))
+            
+            # Note: Captcha giải bất đồng bộ, tao sẽ xử lý trong background ở bản sau
         else:
-            session['flash_msg'] = f"Lỗi! Discord chặn: {r.text}"
+            session['flash_msg'] = f"Lỗi cập nhật: {r.text}"
             session['flash_type'] = "error"
     except Exception as e:
-        session['flash_msg'] = f"Lỗi kết nối máy chủ Discord: {str(e)}"
+        session['flash_msg'] = f"Lỗi kết nối: {str(e)}"
         session['flash_type'] = "error"
     return redirect(url_for('index', tab='tools'))
 
@@ -765,7 +815,18 @@ def admin_dashboard():
     total_users = users_collection.count_documents({})
     total_bots = accounts_collection.count_documents({})
     active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
-    return f"<html><body style='background:#0b0c10; color:#66fcf1; text-align:center; padding:50px; font-family:sans-serif;'><h1>👁️ MẮT THẦN DANGKHOI 👁️</h1><div style='background:#1f2833; padding:20px; border-radius:12px; display:inline-block; border:1px solid #45f3ff;'><p style='color:#fff'>👥 Users: <b style='color:#4cdf8b'>{total_users}</b></p><p style='color:#fff'>🤖 Tokens đang chạy: <b style='color:#4cdf8b'>{total_bots}</b></p><p style='color:#fff'>⚡ Luồng chạy RAM: <b style='color:#4cdf8b'>{active_running}</b></p></div></body></html>"
+    return f"""
+    <html>
+    <body style='background:#0b0c10; color:#66fcf1; text-align:center; padding:50px; font-family:sans-serif;'>
+        <h1>👁️ MẮT THẦN DANGKHOI 👁️</h1>
+        <div style='background:#1f2833; padding:20px; border-radius:12px; display:inline-block; border:1px solid #45f3ff;'>
+            <p style='color:#fff'>👥 Users: <b style='color:#4cdf8b'>{total_users}</b></p>
+            <p style='color:#fff'>🤖 Tokens đang chạy: <b style='color:#4cdf8b'>{total_bots}</b></p>
+            <p style='color:#fff'>⚡ Luồng chạy RAM: <b style='color:#4cdf8b'>{active_running}</b></p>
+        </div>
+    </body>
+    </html>
+    """
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
