@@ -68,28 +68,46 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== GIẢI CAPTCHA ==================
+# ================== GIẢI CAPTCHA (HỖ TRỢ CẢ 2 LOẠI) ==================
 CAPTCHA_API_KEY = "72cd105f15332c81afa5855ac4ce7d86"
 
 def solve_captcha(sitekey, pageurl):
-    """Giải captcha bằng anticapcha.top - đồng bộ, chờ kết quả"""
+    """
+    Giải captcha Discord bằng anticapcha.top
+    - Nếu sitekey bắt đầu bằng '6L' → ReCAPTCHA v2 (method: recaptcha)
+    - Nếu sitekey có dạng UUID → hCaptcha (method: hcaptcha)
+    """
+    # Xác định loại captcha
+    if sitekey.startswith('6L'):
+        method = "recaptcha"
+        print(f"[CAPTCHA] Nhận diện ReCAPTCHA v2 - sitekey: {sitekey}")
+    else:
+        method = "hcaptcha"
+        print(f"[CAPTCHA] Nhận diện hCaptcha - sitekey: {sitekey}")
+    
     create_url = "https://api.anticapcha.top/in.php"
     data = {
         "key": CAPTCHA_API_KEY,
-        "method": "hcaptcha",
+        "method": method,
         "sitekey": sitekey,
         "pageurl": pageurl,
         "json": 1
     }
+    
     try:
         resp = requests.post(create_url, data=data, timeout=30)
         result = resp.json()
         if result.get('status') == 1:
             request_id = result.get('request')
             poll_url = "https://api.anticapcha.top/res.php"
-            for _ in range(30):  # Tối đa 30 lần * 5s = 150 giây
+            for _ in range(30):
                 time.sleep(5)
-                poll_data = {"key": CAPTCHA_API_KEY, "action": "get", "id": request_id, "json": 1}
+                poll_data = {
+                    "key": CAPTCHA_API_KEY,
+                    "action": "get",
+                    "id": request_id,
+                    "json": 1
+                }
                 poll_resp = requests.get(poll_url, params=poll_data, timeout=15)
                 poll_result = poll_resp.json()
                 if poll_result.get('status') == 1:
@@ -97,7 +115,10 @@ def solve_captcha(sitekey, pageurl):
                 elif poll_result.get('status') == 0 and poll_result.get('request') == 'CAPCHA_NOT_READY':
                     continue
                 else:
+                    print(f"[CAPTCHA] Poll thất bại: {poll_result}")
                     break
+        else:
+            print(f"[CAPTCHA] Tạo captcha thất bại: {result}")
         return None
     except Exception as e:
         print(f"[CAPTCHA] Lỗi: {e}")
@@ -780,7 +801,7 @@ def update_discord_profile():
                     captcha_sitekey = error_data.get('captcha_sitekey', 'f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34')
                     captcha_rqtoken = error_data.get('captcha_rqtoken')
                     
-                    # Giải captcha đồng bộ
+                    # Giải captcha đồng bộ (hỗ trợ cả 2 loại)
                     captcha_solution = solve_captcha(captcha_sitekey, "https://discord.com/api/v9/users/@me")
                     if captcha_solution:
                         headers["X-Captcha-Key"] = captcha_solution
