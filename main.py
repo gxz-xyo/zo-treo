@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, redirect, url_for
 import threading
 import json
 import time
@@ -9,11 +9,11 @@ import os
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Lưu trữ bot toàn cục, không phụ thuộc session
+# Lưu bot toàn cục, không phụ thuộc session
 bots = {}
 
-# ================== GIAO DIỆN ĐẸP ==================
-HTML_TEMPLATE = """
+# ================== GIAO DIỆN CHÍNH ==================
+HTML_MAIN = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -39,17 +39,25 @@ HTML_TEMPLATE = """
         .options input[type="checkbox"] { accent-color: #e94560; width: 16px; height: 16px; }
         .btn-primary { width: 100%; padding: 14px; background: #e94560; border: none; border-radius: 12px; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.3s; }
         .btn-primary:hover { background: #c73652; transform: scale(1.01); }
+        .btn-danger { padding: 10px 20px; background: #2a1a1a; border: 1px solid #5a2a2a; border-radius: 10px; color: #ff6b6b; font-weight: 600; cursor: pointer; }
+        .btn-refresh { padding: 10px 20px; background: #1a1a3a; border: 1px solid #2a2a5a; border-radius: 10px; color: #88aaff; font-weight: 600; cursor: pointer; }
+        .btn-config { padding: 10px 20px; background: #1a2a1a; border: 1px solid #2a5a2a; border-radius: 10px; color: #88ff88; font-weight: 600; cursor: pointer; }
         .status-box { padding: 12px 16px; border-radius: 12px; margin: 15px 0; text-align: center; font-weight: 600; }
         .online { background: #0f3b2b; color: #4cdf8b; border: 1px solid #1e5a3a; }
         .offline { background: #3b1a1a; color: #ff6b6b; border: 1px solid #5a2a2a; }
         .log-box { background: #0a0a12; border-radius: 12px; padding: 10px; max-height: 180px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #88ccff; border: 1px solid #1a1a2e; margin: 15px 0; white-space: pre-wrap; word-break: break-all; }
         .log-box::-webkit-scrollbar { width: 4px; }
         .log-box::-webkit-scrollbar-thumb { background: #e94560; border-radius: 4px; }
-        .row-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-danger { flex: 1; padding: 10px; background: #2a1a1a; border: 1px solid #5a2a2a; border-radius: 10px; color: #ff6b6b; font-weight: 600; cursor: pointer; }
-        .btn-refresh { flex: 1; padding: 10px; background: #1a1a3a; border: 1px solid #2a2a5a; border-radius: 10px; color: #88aaff; font-weight: 600; cursor: pointer; }
+        .row-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .account-card { background: #12121f; border-radius: 16px; padding: 16px; margin: 10px 0; border: 1px solid #2a2a4a; display: flex; justify-content: space-between; align-items: center; }
+        .account-info { color: #ccc; }
+        .account-info .name { font-weight: 700; color: #fff; }
+        .account-info .status { font-size: 12px; }
+        .status-online { color: #4cdf8b; }
+        .status-offline { color: #ff6b6b; }
         .footer { text-align: center; color: #444; font-size: 11px; margin-top: 20px; }
         .highlight { color: #e94560; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -57,61 +65,92 @@ HTML_TEMPLATE = """
         <div class="logo">ZO <span>Treo</span></div>
         <div class="sub">Treo tài khoản trong kênh voice Discord 24/7</div>
 
-        <!-- Form nhập thông tin -->
-        <form method="POST" action="/start">
-            <div class="card">
-                <div class="card-title">⚙️ Cấu hình tài khoản</div>
-                <div class="input-group">
-                    <label>🔑 Token Discord</label>
-                    <input type="text" name="token" placeholder="Nhập token của bạn" required>
+        <!-- FORM NHẬP THÔNG TIN (HIỆN KHI CHƯA CÓ BOT) -->
+        <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
+            <form method="POST" action="/start">
+                <div class="card">
+                    <div class="card-title">⚙️ Cấu hình tài khoản</div>
+                    <div class="input-group">
+                        <label>🔑 Token Discord</label>
+                        <input type="text" name="token" placeholder="Nhập token của bạn" required>
+                    </div>
+                    <div class="input-group">
+                        <label>🏠 ID Máy chủ (Server ID)</label>
+                        <input type="text" name="guild_id" placeholder="Ví dụ: 1336001794685538335" required>
+                    </div>
+                    <div class="input-group">
+                        <label>🎤 ID Kênh Voice (Channel ID)</label>
+                        <input type="text" name="channel_id" placeholder="Ví dụ: 1420959332484251742" required>
+                    </div>
+                    <div class="options">
+                        <label><input type="checkbox" name="mute" checked> 🔇 Mute</label>
+                        <label><input type="checkbox" name="deaf" checked> 🎧 Deaf</label>
+                        <label><input type="checkbox" name="video"> 📹 Video</label>
+                        <label><input type="checkbox" name="stream"> 🖥️ Stream</label>
+                    </div>
+                    <button type="submit" class="btn-primary">🚀 BẮT ĐẦU TREO</button>
                 </div>
-                <div class="input-group">
-                    <label>🏠 ID Máy chủ (Server ID)</label>
-                    <input type="text" name="guild_id" placeholder="Ví dụ: 1336001794685538335" required>
-                </div>
-                <div class="input-group">
-                    <label>🎤 ID Kênh Voice (Channel ID)</label>
-                    <input type="text" name="channel_id" placeholder="Ví dụ: 1420959332484251742" required>
-                </div>
-                <div class="options">
-                    <label><input type="checkbox" name="mute" checked> 🔇 Mute</label>
-                    <label><input type="checkbox" name="deaf" checked> 🎧 Deaf</label>
-                    <label><input type="checkbox" name="video"> 📹 Video</label>
-                    <label><input type="checkbox" name="stream"> 🖥️ Stream</label>
-                </div>
-                <button type="submit" class="btn-primary">🚀 BẮT ĐẦU TREO</button>
-            </div>
-        </form>
+            </form>
+        </div>
 
-        <!-- Trạng thái & Log -->
-        <div class="card">
-            <div class="status-box {{ 'online' if status else 'offline' }}">
-                {{ '✅ Đang treo' if status else '⏸️ Chưa treo' }}
+        <!-- CARD TÀI KHOẢN ĐANG TREO (HIỆN KHI CÓ BOT) -->
+        <div id="account-container" class="{{ '' if has_bot else 'hidden' }}">
+            <div class="card">
+                <div class="card-title">📋 Tài khoản đang treo</div>
+                {% for key, bot in bot_items %}
+                <div class="account-card">
+                    <div class="account-info">
+                        <div class="name">{{ bot.get('display_name', 'Bot') }}</div>
+                        <div class="status">
+                            Trạng thái: 
+                            <span class="{{ 'status-online' if bot.get('connected') else 'status-offline' }}">
+                                {{ '✅ Đang treo' if bot.get('connected') else '⏸️ Đã dừng' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <form method="POST" action="/config" style="display:inline;">
+                            <input type="hidden" name="bot_key" value="{{ key }}">
+                            <button type="submit" class="btn-config">⚙️ Cấu hình</button>
+                        </form>
+                        <form method="POST" action="/stop" style="display:inline;">
+                            <input type="hidden" name="bot_key" value="{{ key }}">
+                            <button type="submit" class="btn-danger">⏹️ Dừng</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            <div class="log-box">{{ log|join('\\n') if log else '💬 Chưa có log nào...' }}</div>
-            <div class="row-actions">
-                <form method="POST" action="/stop" style="flex:1">
-                    <button type="submit" class="btn-danger">⏹️ DỪNG TREO</button>
-                </form>
-                <form method="POST" action="/refresh" style="flex:1">
-                    <button type="submit" class="btn-refresh">🔄 REFRESH LOG</button>
-                </form>
+            <div class="card">
+                <div class="status-box {{ 'online' if status else 'offline' }}">
+                    {{ '✅ Đang treo' if status else '⏸️ Chưa treo' }}
+                </div>
+                <div class="log-box">{{ log|join('\\n') if log else '💬 Chưa có log nào...' }}</div>
+                <div class="row-actions">
+                    <form method="POST" action="/refresh" style="flex:1;">
+                        <button type="submit" class="btn-refresh" style="width:100%;">🔄 Refresh Log</button>
+                    </form>
+                </div>
             </div>
         </div>
+
         <div class="footer">⚡ <span class="highlight">ZO</span> - Quyền lực thuộc về Barra</div>
     </div>
 
     <script>
-        // Tự động reload để cập nhật log nhưng KHÔNG làm mất bot
+        // Tự động reload để cập nhật log (không làm mất bot)
         setInterval(() => {
             fetch('/ping').then(() => {});
         }, 20000);
+        setInterval(() => {
+            location.reload();
+        }, 30000);
     </script>
 </body>
 </html>
 """
 
-# ================== PHẦN XỬ LÝ BOT (GIỮ NGUYÊN, NHƯNG ĐÃ TỐI ƯU) ==================
+# ================== PHẦN XỬ LÝ BOT (TỐI ƯU) ==================
 def run_bot(bot_key, config):
     token = config['token']
     guild_id = config['guild_id']
@@ -127,6 +166,7 @@ def run_bot(bot_key, config):
     connected = False
     running = True
     reconnect_attempts = 0
+    display_name = ""
 
     def add_log(msg):
         if bot_key in bots:
@@ -158,7 +198,7 @@ def run_bot(bot_key, config):
             pass
 
     def on_message(ws, message):
-        nonlocal last_seq, connected, heartbeat_interval
+        nonlocal last_seq, connected, heartbeat_interval, display_name
         try:
             data = json.loads(message)
         except:
@@ -181,7 +221,10 @@ def run_bot(bot_key, config):
             add_log("📤 Đã gửi IDENTIFY")
         elif op == 0:
             if t == 'READY':
-                add_log(f"🎯 Đã xác thực: {data['d']['user']['username']}")
+                display_name = data['d']['user']['username']
+                if bot_key in bots:
+                    bots[bot_key]['display_name'] = display_name
+                add_log(f"🎯 Đã xác thực: {display_name}")
                 send_voice_update(ws)
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
@@ -273,10 +316,14 @@ def index():
     if bot_key:
         log = bots[bot_key].get('log', [])
         status = bots[bot_key].get('connected', False)
+        has_bot = True
+        bot_items = [(key, bots[key]) for key in bots.keys() if bots[key].get('running', False)]
     else:
         log = []
         status = False
-    return render_template_string(HTML_TEMPLATE, log=log, status=status)
+        has_bot = False
+        bot_items = []
+    return render_template_string(HTML_MAIN, log=log, status=status, has_bot=has_bot, bot_items=bot_items)
 
 @app.route('/start', methods=['POST'])
 def start_bot():
@@ -296,20 +343,25 @@ def start_bot():
     config = {'token': token, 'guild_id': guild_id, 'channel_id': channel_id, 'mute': mute, 'deaf': deaf, 'video': video, 'stream': stream}
     thread = threading.Thread(target=run_bot, args=(bot_key, config), daemon=True)
     thread.start()
-    bots[bot_key] = {'thread': thread, 'connected': False, 'log': [f"🚀 Khởi tạo bot..."], 'running': True}
-    return index()
+    bots[bot_key] = {'thread': thread, 'connected': False, 'log': [f"🚀 Khởi tạo bot..."], 'running': True, 'display_name': 'Đang kết nối...'}
+    return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
 def stop_bot():
-    for key in list(bots.keys()):
-        if bots[key].get('running', False):
-            bots[key]['running'] = False
-            bots[key]['log'].append("⏹️ Đã dừng bot.")
-    return index()
+    bot_key = request.form.get('bot_key')
+    if bot_key and bot_key in bots:
+        bots[bot_key]['running'] = False
+        bots[bot_key]['log'].append("⏹️ Đã dừng bot.")
+    return redirect(url_for('index'))
+
+@app.route('/config', methods=['POST'])
+def config_bot():
+    # Chuyển về form cấu hình (chưa implement)
+    return redirect(url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
 def refresh():
-    return index()
+    return redirect(url_for('index'))
 
 @app.route('/ping')
 def ping():
