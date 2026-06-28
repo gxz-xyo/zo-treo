@@ -110,8 +110,8 @@ HTML_MAIN = """
 </head>
 <body>
     <div class="container">
-        <div class="logo">ZO <span>Treo</span></div>
-        <div class="sub">Không gian tối thượng Zeta • Quyền lực của Barra</div>
+        <div class="logo">xFILL <span>Treo</span></div>
+        <div class="sub">TOOLS BY XFILL @gietanhdi</div>
 
         <!-- FORM NHẬP THÔNG TIN -->
         <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
