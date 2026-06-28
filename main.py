@@ -5,79 +5,60 @@ import time
 import requests
 import websocket
 import os
-import sqlite3
+from pymongo import MongoClient
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Đường dẫn lưu cơ sở dữ liệu (Trỏ vào thư mục data để gắn ổ đĩa cố định trên Render)
-DB_DIR = "/opt/render/project/src/data" if os.path.exists("/opt/render/project/src") else "data"
-if not os.path.exists(DB_DIR):
-    os.makedirs(DB_DIR)
+# ================== CẤU HÌNH MONGODB ĐÃ ĐỒNG BỘ TÀI KHOẢN CỦA BARRA ==================
+MONGO_URI = "mongodb+srv://dangkhoi:itachi5867@cluster0.idnlwyd.mongodb.net/?appName=Cluster0"
 
-DB_FILE = os.path.join(DB_DIR, "storage.db")
+try:
+    # Thiết lập kết nối đám mây vĩnh cửu
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    db = client["zo_treo_voice"]
+    accounts_collection = db["accounts"]
+    client.server_info()
+    print("✅ Kết nối tới MongoDB Atlas thành công! Dữ liệu đã được thông suốt.")
+except Exception as e:
+    print(f"💥 Lỗi kết nối MongoDB: {e}")
+
 bots = {}
 
-# ================== KHỞI TẠO CƠ SỞ DỮ LIỆU SQLITE ==================
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS accounts (
-            bot_key TEXT PRIMARY KEY,
-            token TEXT,
-            guild_id TEXT,
-            channel_id TEXT,
-            mute INTEGER,
-            deaf INTEGER,
-            video INTEGER,
-            stream INTEGER
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
+# ================== HÀM ĐỌC/GHI DỮ LIỆU TỪ ĐÁM MÂY CLOUD ==================
 def load_storage():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT bot_key, token, guild_id, channel_id, mute, deaf, video, stream FROM accounts')
-    rows = cursor.fetchall()
-    conn.close()
-    
-    data = {}
-    for row in rows:
-        data[row[0]] = {
-            'token': row[1],
-            'guild_id': row[2],
-            'channel_id': row[3],
-            'mute': bool(row[4]),
-            'deaf': bool(row[5]),
-            'video': bool(row[6]),
-            'stream': bool(row[7])
-        }
-    return data
+    try:
+        data = {}
+        for doc in accounts_collection.find():
+            data[doc["bot_key"]] = {
+                'token': doc['token'],
+                'guild_id': doc['guild_id'],
+                'channel_id': doc['channel_id'],
+                'mute': doc.get('mute', True),
+                'deaf': doc.get('deaf', True),
+                'video': doc.get('video', False),
+                'stream': doc.get('stream', False)
+            }
+        return data
+    except Exception as e:
+        print(f"⚠️ Lỗi đọc từ MongoDB: {e}")
+        return {}
 
 def save_storage_item(bot_key, config):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT OR REPLACE INTO accounts (bot_key, token, guild_id, channel_id, mute, deaf, video, stream)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (bot_key, config['token'], config['guild_id'], config['channel_id'], 
-          1 if config['mute'] else 0, 1 if config['deaf'] else 0, 
-          1 if config['video'] else 0, 1 if config['stream'] else 0))
-    conn.commit()
-    conn.close()
+    try:
+        accounts_collection.update_one(
+            {"bot_key": bot_key},
+            {"$set": config},
+            upsert=True
+        )
+    except Exception as e:
+        print(f"⚠️ Lỗi ghi vào MongoDB: {e}")
 
 def delete_storage_item(bot_key):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM accounts WHERE bot_key = ?', (bot_key,))
-    conn.commit()
-    conn.close()
-
-# Khởi tạo DB ngay khi chạy app
-init_db()
+    try:
+        accounts_collection.delete_one({"bot_key": bot_key})
+    except Exception as e:
+        print(f"⚠️ Lỗi xóa trên MongoDB: {e}")
 
 # ================== GIAO DIỆN CHÍNH (DARK THEME ZETA) ==================
 HTML_MAIN = """
@@ -129,9 +110,10 @@ HTML_MAIN = """
 </head>
 <body>
     <div class="container">
-        <div class="logo">xFILL <span>Treo</span></div>
-        <div class="sub">Bản Quyền Thuộc Về DISCORD @gietanhdi</div>
+        <div class="logo">ZO <span>Treo</span></div>
+        <div class="sub">Không gian tối thượng Zeta • Quyền lực của Barra</div>
 
+        <!-- FORM NHẬP THÔNG TIN -->
         <div id="form-container" class="{{ 'hidden' if has_bot else '' }}">
             <form method="POST" action="/start">
                 <div class="card">
@@ -159,6 +141,7 @@ HTML_MAIN = """
             </form>
         </div>
 
+        <!-- THÔNG TIN TRẠNG THÁI BOT -->
         <div id="account-container" class="{{ '' if has_bot else 'hidden' }}">
             <div class="card">
                 <div class="card-title">📋 TÀI KHOẢN ĐANG HOẠT ĐỘNG</div>
@@ -220,7 +203,6 @@ def run_bot(bot_key, config):
     last_seq = None
     heartbeat_interval = 41250
     connected = False
-    reconnect_attempts = 0
 
     if bot_key not in bots:
         bots[bot_key] = {
@@ -257,14 +239,12 @@ def run_bot(bot_key, config):
             }
             ws_client.send(json.dumps(payload))
         except Exception as e:
-            add_log(f"⚠️ Lỗi gửi voice state: {e}")
+            add_log(f"⚠️ Lỗi gửi dữ liệu voice: {e}")
 
     def on_message(ws_client, message):
         nonlocal last_seq, connected, heartbeat_interval
-        try:
-            data = json.loads(message)
-        except:
-            return
+        try: data = json.loads(message)
+        except: return
         
         last_seq = data.get('s', last_seq)
         op = data.get('op')
@@ -272,26 +252,22 @@ def run_bot(bot_key, config):
 
         if op == 10:
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-            identify_payload = {
+            ws_client.send(json.dumps({
                 "op": 2,
                 "d": {
                     "token": token,
                     "properties": {"os": "Linux", "browser": "Chrome", "device": "ZO_Zeta"},
-                    "compress": False,
-                    "large_threshold": 50
+                    "compress": False, "large_threshold": 50
                 }
-            }
-            ws_client.send(json.dumps(identify_payload))
-            add_log("📤 Đã gửi gói IDENTIFY")
+            }))
+            add_log("📤 Đã gửi gói IDENTIFY xác thực")
             
         elif op == 0:
             if t == 'READY':
                 d_name = data['d']['user']['username']
-                if bot_key in bots:
-                    bots[bot_key]['display_name'] = d_name
+                if bot_key in bots: bots[bot_key]['display_name'] = d_name
                 add_log(f"🎯 Thực thể trực tuyến: {d_name}")
                 send_voice_update(ws_client)
-                
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
@@ -301,11 +277,9 @@ def run_bot(bot_key, config):
                 elif d.get('channel_id') is None and connected:
                     connected = False
                     update_status(False)
-                    add_log("⚠️ Bị đẩy khỏi phòng! Tiến hành chiếm lại...")
+                    add_log("⚠️ Bị đẩy khỏi phòng! Đang chiếm lại phòng...")
                     send_voice_update(ws_client)
-                    
         elif op == 9:
-            add_log("⚠️ Session hỏng, đang kết nối lại...")
             ws_client.close()
 
     def on_close(ws_client, code, msg):
@@ -313,73 +287,54 @@ def run_bot(bot_key, config):
         if connected:
             connected = False
             update_status(False)
-        add_log("🔌 Kết nối đóng. Thử lại sau 5s...")
+        add_log("🔌 Kết nối đóng ngắt. Thử lại sau 5s...")
         time.sleep(5)
-        if bot_key in bots and bots[bot_key]['running']:
-            start_ws()
+        if bot_key in bots and bots[bot_key]['running']: start_ws()
 
     def on_error(ws_client, error):
-        if "Connection closed" not in str(error):
-            add_log(f"💥 Lỗi luồng: {error}")
+        if "Connection closed" not in str(error): add_log(f"💥 Lỗi luồng: {error}")
 
     def heartbeat_loop():
         while bot_key in bots and bots[bot_key]['running']:
             time.sleep(heartbeat_interval)
             if ws and ws.keep_running:
-                try:
-                    ws.send(json.dumps({"op": 1, "d": last_seq}))
-                except:
-                    pass
+                try: ws.send(json.dumps({"op": 1, "d": last_seq}))
+                except: pass
 
     def keep_alive_loop():
         while bot_key in bots and bots[bot_key]['running']:
             time.sleep(25)
-            if ws and ws.keep_running and connected:
-                send_voice_update(ws)
+            if ws and ws.keep_running and connected: send_voice_update(ws)
 
     def start_ws():
-        nonlocal ws, reconnect_attempts
-        if bot_key not in bots or not bots[bot_key]['running']:
-            return
-            
-        reconnect_attempts += 1
-        if reconnect_attempts > 100:
-            add_log("❌ Quá giới hạn reconnect.")
-            update_status(False)
-            return
-            
+        nonlocal ws
+        if bot_key not in bots or not bots[bot_key]['running']: return
         try:
             gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
-        except Exception as e:
-            add_log("❌ Lỗi lấy gateway, thử lại sau 5s...")
+        except:
             time.sleep(5)
             start_ws()
             return
             
         ws = websocket.WebSocketApp(
             gateway + "/?v=9&encoding=json",
-            on_message=on_message,
-            on_error=on_error,
-            on_close=on_close
+            on_message=on_message, on_error=on_error, on_close=on_close
         )
-        
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         threading.Thread(target=keep_alive_loop, daemon=True).start()
         ws.run_forever()
 
-    add_log("🚀 Khởi chạy luồng ngầm...")
     start_ws()
 
-# ================== ROUTES ==================
+# ================== ROUTES ĐIỀU HƯỚNG GIAO DIỆN ==================
 @app.route('/', methods=['GET'])
 def index():
     storage_data = load_storage()
-    
     for key, config in storage_data.items():
         if key not in bots:
             bots[key] = {
                 'connected': False,
-                'log': ["[🎯] Khôi phục tài khoản từ bộ lưu trữ vĩnh cửu."],
+                'log': ["[🎯] Tự khôi phục tài khoản từ đám mây MongoDB Cloud."],
                 'running': True,
                 'display_name': 'Đang khôi phục...'
             }
@@ -387,7 +342,6 @@ def index():
 
     active_bots = [(k, v) for k, v in bots.items() if v.get('running', False)]
     has_bot = len(active_bots) > 0
-    
     log = []
     status = False
     if has_bot:
@@ -402,23 +356,16 @@ def start_bot_route():
     token = request.form['token'].strip()
     guild_id = request.form['guild_id'].strip()
     channel_id = request.form['channel_id'].strip()
-    mute = 'mute' in request.form
-    deaf = 'deaf' in request.form
-    video = 'video' in request.form
-    stream = 'stream' in request.form
-
+    
     bot_key = f"{guild_id}_{channel_id}"
-    config = {'token': token, 'guild_id': guild_id, 'channel_id': channel_id, 'mute': mute, 'deaf': deaf, 'video': video, 'stream': stream}
+    config = {
+        'bot_key': bot_key, 'token': token, 'guild_id': guild_id, 'channel_id': channel_id,
+        'mute': 'mute' in request.form, 'deaf': 'deaf' in request.form,
+        'video': 'video' in request.form, 'stream': 'stream' in request.form
+    }
 
     save_storage_item(bot_key, config)
-
-    bots[bot_key] = {
-        'connected': False,
-        'log': ["🚀 Thiết lập luồng treo nền vĩnh cửu..."],
-        'running': True,
-        'display_name': 'Đang kết nối...'
-    }
-    
+    bots[bot_key] = {'connected': False, 'log': ["🚀 Đang kết nối đám mây..."], 'running': True, 'display_name': 'Đang kết nối...'}
     threading.Thread(target=run_bot, args=(bot_key, config), daemon=True).start()
     return redirect(url_for('index'))
 
@@ -426,12 +373,9 @@ def start_bot_route():
 def stop_bot_route():
     bot_key = request.form.get('bot_key')
     delete_storage_item(bot_key)
-        
     if bot_key in bots:
         bots[bot_key]['running'] = False
-        bots[bot_key]['connected'] = False
         del bots[bot_key]
-        
     return redirect(url_for('index'))
 
 @app.route('/refresh', methods=['POST'])
@@ -439,8 +383,7 @@ def refresh():
     return redirect(url_for('index'))
 
 @app.route('/ping')
-def ping():
-    return "pong"
+def ping(): return "pong"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
