@@ -68,7 +68,7 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== GIAO DIỆN ĐĂNG NHẬP ==================
+# ================== GIAO DIỆN HỆ THỐNG ĐĂNG NHẬP ==================
 HTML_AUTH = """
 <!DOCTYPE html>
 <html>
@@ -301,24 +301,36 @@ HTML_MAIN = """
             </div>
         </div>
 
-        <!-- TAB DONATE (THAY THẾ TIỆN ÍCH) -->
+        <!-- TAB DONATE (ĐÃ SỬA THEO YÊU CẦU) -->
         <div id="tab-donate" class="tab-content">
             <div class="card">
                 <div class="card-title">💖 Ủng hộ phát triển công cụ</div>
                 <p style="color: #85929e; font-size: 14px; line-height: 1.6; text-align: center;">
                     Cảm ơn bạn đã sử dụng <b style="color: #66fcf1;">Za Tools</b>!<br>
-                    Nếu bạn thấy công cụ hữu ích, hãy ủng hộ admin để duy trì phát triển.
+                    Nhập số tiền bạn muốn ủng hộ và tạo mã QR để chuyển khoản nhanh.
                 </p>
-                <div style="text-align: center; margin: 20px 0;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=MB Bank - 1628012010 - Phan Tran Dang Khoi" 
-                         alt="QR ủng hộ" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #66fcf1;">
+                
+                <!-- Form nhập số tiền -->
+                <div style="margin: 20px 0;">
+                    <div class="input-group">
+                        <label>Số tiền (VNĐ)</label>
+                        <input type="number" id="donate_amount" placeholder="Nhập số tiền, ví dụ: 50000" min="1000" style="width: 100%; padding: 12px; background: #0b0c10; border: 1px solid #2f3e46; border-radius: 8px; color: #fff; font-size: 14px; outline: none;">
+                    </div>
+                    <button onclick="generateQR()" class="btn btn-primary" style="width:100%;">🔄 Tạo mã QR VietQR</button>
+                </div>
+                
+                <!-- Hiển thị QR và thông tin -->
+                <div id="qr_result" style="text-align: center; display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #2f3e46;">
+                    <img id="qr_image" src="" alt="QR VietQR" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #66fcf1;">
                     <div style="margin-top: 12px; color: #c5a059; font-size: 14px;">
                         <b>Ngân hàng:</b> MB Bank<br>
                         <b>Số tài khoản:</b> 1628012010<br>
-                        <b>Chủ tài khoản:</b> Phan Tran Dang Khoi
+                        <b>Chủ tài khoản:</b> Phan Tran Dang Khoi<br>
+                        <b>Số tiền:</b> <span id="display_amount">0</span> VNĐ
                     </div>
                 </div>
-                <p style="color: #566573; font-size: 12px; text-align: center; border-top: 1px solid #2f3e46; padding-top: 12px;">
+                
+                <p style="color: #566573; font-size: 12px; text-align: center; border-top: 1px solid #2f3e46; padding-top: 12px; margin-top: 20px;">
                     Mọi đóng góp đều được trân trọng! ❤️
                 </p>
             </div>
@@ -359,6 +371,22 @@ HTML_MAIN = """
         };
         
         setInterval(() => { fetch('/ping'); }, 15000);
+
+        // Hàm tạo QR VietQR
+        function generateQR() {
+            var amount = document.getElementById('donate_amount').value;
+            if (!amount || amount < 1000) {
+                alert('Vui lòng nhập số tiền hợp lệ (tối thiểu 1,000 VNĐ)');
+                return;
+            }
+            
+            // Mã VietQR theo chuẩn của MB Bank
+            var qrUrl = 'https://img.vietqr.io/image/MB-1628012010-compact.png?amount=' + amount + '&addInfo=Donate%20ZaTools';
+            
+            document.getElementById('qr_image').src = qrUrl;
+            document.getElementById('display_amount').innerText = parseInt(amount).toLocaleString('vi-VN');
+            document.getElementById('qr_result').style.display = 'block';
+        }
     </script>
 </body>
 </html>
