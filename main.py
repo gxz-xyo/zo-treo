@@ -68,15 +68,11 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== GIẢI CAPTCHA (HỖ TRỢ CẢ 2 LOẠI) ==================
-CAPTCHA_API_KEY = "72cd105f15332c81afa5855ac4ce7d86"
+# ================== GIẢI CAPTCHA (API MỚI) ==================
+CAPTCHA_API_KEY = "aae9ea8c240a1f0e5322747c32093a58"
 
 def solve_captcha(sitekey, pageurl):
-    """
-    Giải captcha Discord bằng anticapcha.top
-    - Nếu sitekey bắt đầu bằng '6L' → ReCAPTCHA v2 (method: recaptcha)
-    - Nếu sitekey có dạng UUID → hCaptcha (method: hcaptcha)
-    """
+    """Giải captcha bằng anticapcha.top - gọi API thật"""
     # Xác định loại captcha
     if sitekey.startswith('6L'):
         method = "recaptcha"
@@ -95,12 +91,17 @@ def solve_captcha(sitekey, pageurl):
     }
     
     try:
+        # Gửi yêu cầu tạo captcha
         resp = requests.post(create_url, data=data, timeout=30)
         result = resp.json()
+        print(f"[CAPTCHA] Tạo job: {result}")
+        
         if result.get('status') == 1:
             request_id = result.get('request')
             poll_url = "https://api.anticapcha.top/res.php"
-            for _ in range(30):
+            
+            # Poll đến khi có kết quả
+            for _ in range(20):  # 20 lần * 5s = 100 giây
                 time.sleep(5)
                 poll_data = {
                     "key": CAPTCHA_API_KEY,
@@ -110,15 +111,16 @@ def solve_captcha(sitekey, pageurl):
                 }
                 poll_resp = requests.get(poll_url, params=poll_data, timeout=15)
                 poll_result = poll_resp.json()
+                print(f"[CAPTCHA] Poll {_+1}: {poll_result}")
+                
                 if poll_result.get('status') == 1:
                     return poll_result.get('request')
                 elif poll_result.get('status') == 0 and poll_result.get('request') == 'CAPCHA_NOT_READY':
                     continue
                 else:
-                    print(f"[CAPTCHA] Poll thất bại: {poll_result}")
                     break
         else:
-            print(f"[CAPTCHA] Tạo captcha thất bại: {result}")
+            print(f"[CAPTCHA] Tạo job thất bại: {result}")
         return None
     except Exception as e:
         print(f"[CAPTCHA] Lỗi: {e}")
@@ -767,10 +769,8 @@ def update_discord_profile():
     avatar_file = request.files.get('new_avatar')
 
     payload = {}
-    if g_name:
-        payload["global_name"] = g_name
-    if bio:
-        payload["bio"] = bio
+    if g_name: payload["global_name"] = g_name
+    if bio: payload["bio"] = bio
     if avatar_file and avatar_file.filename:
         try:
             img_data = avatar_file.read()
@@ -790,54 +790,59 @@ def update_discord_profile():
 
     headers = {"Authorization": token, "Content-Type": "application/json"}
     
-    def patch_with_captcha_retry(payload, headers, max_retries=1):
-        for attempt in range(max_retries + 1):
-            r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
-            if r.status_code == 200:
-                return r, None
-            elif r.status_code == 400 and 'captcha' in r.text.lower():
-                if attempt < max_retries:
-                    error_data = r.json()
-                    captcha_sitekey = error_data.get('captcha_sitekey', 'f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34')
-                    captcha_rqtoken = error_data.get('captcha_rqtoken')
-                    
-                    # Giải captcha đồng bộ (hỗ trợ cả 2 loại)
-                    captcha_solution = solve_captcha(captcha_sitekey, "https://discord.com/api/v9/users/@me")
-                    if captcha_solution:
-                        headers["X-Captcha-Key"] = captcha_solution
-                        if captcha_rqtoken:
-                            payload["captcha_rqtoken"] = captcha_rqtoken
-                        continue  # thử lại với captcha
-                    else:
-                        return r, "Không thể giải captcha."
-                else:
-                    return r, "Giải captcha thất bại sau khi thử."
-            else:
-                return r, None
-        return r, "Quá số lần thử."
-
-    try:
-        r, error_msg = patch_with_captcha_retry(payload, headers)
+    # Lần 1: Gửi request
+    r = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
+    
+    # Nếu bị captcha
+    if r.status_code == 400 and 'captcha' in r.text.lower():
+        session['flash_msg'] = "⏳ Đang giải captcha, vui lòng chờ..."
+        session['flash_type'] = "success"
         
-        if r.status_code == 200:
-            session['flash_msg'] = "Cập nhật thành công!"
-            session['flash_type'] = "success"
-            data = r.json()
-            session['tool_user'] = {
-                'username': data.get('username'),
-                'global_name': data.get('global_name'),
-                'bio': data.get('bio'),
-                'avatar': data.get('avatar'),
-                'id': data.get('id')
-            }
-        else:
-            if error_msg:
-                session['flash_msg'] = error_msg
+        # Lấy thông tin captcha
+        error_data = r.json()
+        captcha_sitekey = error_data.get('captcha_sitekey', 'f5561ba9-8f1e-40ca-9b5b-a0b3f719ef34')
+        captcha_rqtoken = error_data.get('captcha_rqtoken')
+        
+        # Giải captcha
+        captcha_solution = solve_captcha(captcha_sitekey, "https://discord.com/api/v9/users/@me")
+        
+        if captcha_solution:
+            # Gửi lại với captcha
+            headers["X-Captcha-Key"] = captcha_solution
+            if captcha_rqtoken:
+                payload["captcha_rqtoken"] = captcha_rqtoken
+            
+            r2 = requests.patch("https://discord.com/api/v9/users/@me", headers=headers, json=payload, timeout=30)
+            if r2.status_code == 200:
+                session['flash_msg'] = "Cập nhật thành công sau captcha!"
+                session['flash_type'] = "success"
+                data = r2.json()
+                session['tool_user'] = {
+                    'username': data.get('username'),
+                    'global_name': data.get('global_name'),
+                    'bio': data.get('bio'),
+                    'avatar': data.get('avatar'),
+                    'id': data.get('id')
+                }
             else:
-                session['flash_msg'] = f"Lỗi cập nhật: {r.text[:200]}"
+                session['flash_msg'] = f"Vẫn lỗi sau captcha: {r2.text[:100]}"
+                session['flash_type'] = "error"
+        else:
+            session['flash_msg'] = "❌ Không giải được captcha. Kiểm tra API key hoặc số dư."
             session['flash_type'] = "error"
-    except Exception as e:
-        session['flash_msg'] = f"Lỗi kết nối: {str(e)}"
+    elif r.status_code == 200:
+        session['flash_msg'] = "Cập nhật thành công!"
+        session['flash_type'] = "success"
+        data = r.json()
+        session['tool_user'] = {
+            'username': data.get('username'),
+            'global_name': data.get('global_name'),
+            'bio': data.get('bio'),
+            'avatar': data.get('avatar'),
+            'id': data.get('id')
+        }
+    else:
+        session['flash_msg'] = f"Lỗi cập nhật: {r.text[:100]}"
         session['flash_type'] = "error"
     
     return redirect(url_for('index', tab='tools'))
