@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.2 - Fix Cam/Stream Đen Thui & Xoay Vòng.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.3 - Fix Stream Cờ Đỏ & Xoay Vòng.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -120,12 +120,12 @@ HTML_HEAD = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg-main); color: var(--text-main); overflow-x: hidden; min-height: 100vh; transition: background 0.3s, color 0.3s; }
         .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border-light); box-shadow: 0 8px 32px var(--shadow); transition: 0.3s;}
-        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; justify-content: space-between; gap: 8px;}
+        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; color: var(--accent); font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; color: var(--text-main); font-size: 14px; outline: none; transition: 0.3s; }
         .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-hover); }
-        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
         .btn-primary { background: var(--btn-bg); border: 1px solid var(--accent-hover); color: #fff; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-hover); }
         .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: var(--success-text); }
@@ -206,7 +206,7 @@ HTML_AUTH = HTML_HEAD + """
         <form method="POST" action="/login">
             <div class="input-group"><label>Tài khoản</label><input type="text" name="username" required placeholder="Tên đăng nhập..."></div>
             <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
-            <button type="submit" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> ĐĂNG NHẬP</button>
+            <button type="submit" class="btn btn-primary">ĐĂNG NHẬP</button>
         </form>
         <div class="divider">Hoặc</div>
         <a href="/login/discord" class="btn-oauth"><svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>Đăng nhập bằng Discord</a>
@@ -217,7 +217,7 @@ HTML_AUTH = HTML_HEAD + """
             <div class="input-group"><label>Tài khoản</label><input type="text" name="username" required placeholder="Tên đăng nhập..."></div>
             <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
             <div class="input-group"><label>Mã PIN bảo mật (Để lấy lại pass)</label><input type="text" name="pin" required placeholder="Ví dụ: 1234, khoideptrai..."></div>
-            <button type="submit" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> ĐĂNG KÝ NGAY</button>
+            <button type="submit" class="btn btn-primary">ĐĂNG KÝ NGAY</button>
         </form>
         <div class="switch-link">Đã có tài khoản? <a href="/login">Đăng nhập</a></div>
         
@@ -226,7 +226,7 @@ HTML_AUTH = HTML_HEAD + """
             <div class="input-group"><label>Tên tài khoản</label><input type="text" name="username" required placeholder="Tài khoản cần lấy lại..."></div>
             <div class="input-group"><label>Mã PIN bảo mật đã tạo</label><input type="text" name="pin" required placeholder="Nhập PIN lúc đăng ký..."></div>
             <div class="input-group"><label>Mật khẩu Mới</label><input type="password" name="new_password" required placeholder="Nhập pass mới..."></div>
-            <button type="submit" class="btn btn-success"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> ĐỔI MẬT KHẨU</button>
+            <button type="submit" class="btn btn-success">ĐỔI MẬT KHẨU</button>
         </form>
         <div class="switch-link"><a href="/login">← Quay lại đăng nhập</a></div>
         {% endif %}
@@ -446,6 +446,7 @@ HTML_MAIN = HTML_HEAD + """
                 </div>
                 
                 <div id="payment_status" class="msg pulsing" style="display:none; margin-top:15px; background:rgba(241, 196, 15, 0.1); color:var(--coin-color); border:1px solid rgba(241, 196, 15, 0.3);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     Đang chờ ngân hàng xử lý...
                 </div>
             </div>
@@ -589,7 +590,9 @@ HTML_MAIN = HTML_HEAD + """
                 statusDiv.style.background = 'rgba(46, 204, 113, 0.1)';
                 statusDiv.style.color = 'var(--success-text)';
                 statusDiv.style.borderColor = 'rgba(46, 204, 113, 0.3)';
-                statusDiv.innerHTML = `Nạp thành công +${diff.toLocaleString('vi-VN')} Coin!`;
+                statusDiv.innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Nạp thành công +${diff.toLocaleString('vi-VN')} Coin!`;
+                
+                document.getElementById('wallet-display-sidebar').innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> ${currentBalance.toLocaleString('vi-VN')}`;
             }
         });
     }
@@ -645,14 +648,13 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX AUTO-RECONNECT + FIX BOOL) ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX CỜ ĐỎ STREAM) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
     channel_id = config.get('channel_id')
     status_text = config.get('status_text', '')
     
-    # CHUYỂN ĐỔI CHUẨN XÁC VỀ BOOLEAN CHO DISCORD
     mute = str(config.get('mute', 'False')).lower() in ['true', 'on', '1']
     deaf = str(config.get('deaf', 'False')).lower() in ['true', 'on', '1']
     video = str(config.get('video', 'False')).lower() in ['true', 'on', '1']
@@ -672,10 +674,11 @@ def run_bot(bot_key, config, username):
     def update_status(st):
         if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
 
-    def send_voice_update(ws_client):
+    # Hàm gửi update có tham số init_stream để quản lý OP Code 18
+    def send_voice_update(ws_client, init_stream=False):
         if not ws_client or not ws_client.keep_running: return
         try: 
-            # ĐÃ CHUYỂN MUTE/DEAF/VIDEO/STREAM THÀNH BOOLEAN CHUẨN CỦA DISCORD
+            # Lệnh OP 4: Xin vào Voice, bật Mute/Deaf/Video (Cam)
             ws_client.send(json.dumps({
                 "op": 4, 
                 "d": {
@@ -683,10 +686,29 @@ def run_bot(bot_key, config, username):
                     "channel_id": channel_id, 
                     "self_mute": mute, 
                     "self_deaf": deaf, 
-                    "self_video": video, 
-                    "self_stream": stream
+                    "self_video": video
                 }
             }))
+            
+            # Lệnh OP 18 (CỰC KỲ QUAN TRỌNG): Để báo cho Discord là mình Đang Trực Tiếp (Live)
+            if stream and init_stream:
+                def fire_stream():
+                    if ws_client and ws_client.keep_running:
+                        try:
+                            ws_client.send(json.dumps({
+                                "op": 18,
+                                "d": {
+                                    "type": "guild",
+                                    "guild_id": guild_id,
+                                    "channel_id": channel_id,
+                                    "preferred_region": None
+                                }
+                            }))
+                            add_log("🔴 Đã bung cờ Đang Trực Tiếp (Live ảo)!")
+                        except: pass
+                # Đợi 1.5s cho Discord đẩy Bot vào phòng rồi mới tung cờ Live lên
+                threading.Timer(1.5, fire_stream).start()
+                
         except: pass
 
     def on_message(ws_client, message):
@@ -718,7 +740,7 @@ def run_bot(bot_key, config, username):
                 d_name = data['d']['user']['username']
                 if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['display_name'] = d_name
                 add_log(f"🎯 Đăng nhập thành công: {d_name}")
-                send_voice_update(ws_client)
+                send_voice_update(ws_client, init_stream=True)
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
@@ -727,7 +749,7 @@ def run_bot(bot_key, config, username):
                 elif d.get('channel_id') is None and connected:
                     connected = False; update_status(False)
                     add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
-                    send_voice_update(ws_client)
+                    send_voice_update(ws_client, init_stream=True)
         elif op == 9: ws_client.close()
 
     def on_close(ws_client, code, msg):
@@ -750,7 +772,7 @@ def run_bot(bot_key, config, username):
     def keep_alive_loop():
         while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
             time.sleep(30)
-            if ws and ws.keep_running and connected: send_voice_update(ws)
+            if ws and ws.keep_running and connected: send_voice_update(ws, init_stream=False)
 
     def start_ws():
         nonlocal ws
@@ -877,7 +899,6 @@ def start():
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
         
-    # LƯU CHÍNH XÁC BOOLEAN TỪ FORM ĐỂ DATABASE SẠCH SẼ
     config = {
         'token': request.form.get('token', '').strip(),
         'guild_id': request.form.get('guild_id', '').strip(),
