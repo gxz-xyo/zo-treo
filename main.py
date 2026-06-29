@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_final_v16_mobile_sub"
+app.secret_key = "za_tools_final_v16_mobile_fix"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE ==================
@@ -25,13 +25,12 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V16 - Chuẩn Mobile & Gói 1 Tháng.")
+    print("✅ MongoDB OK! Đã kích hoạt V16.1 - Chuẩn Mobile Fix Viewport.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
 user_bots = {}
 
-# Thông tin OAuth2
 DISCORD_CLIENT_ID = '1504310281625403544'
 DISCORD_CLIENT_SECRET = 'FuZ0Xru4xBnE0UoxpmEEbby51ZB8D0RN'
 DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize'
@@ -48,15 +47,12 @@ def get_user_limit(username):
     expiry_ts = user.get('expiry_date', 0)
     if expiry_ts > 0:
         if int(time.time()) > expiry_ts:
-            # Đã hết hạn -> Giáng cấp về Free
             users_collection.update_one({"username": username}, {"$set": {"max_tokens": 1, "expiry_date": 0}})
             return 1, "Đã hết hạn"
         else:
-            # Vẫn còn hạn
             return user.get('max_tokens', 1), time.strftime('%d/%m/%Y %H:%M', time.localtime(expiry_ts))
     return 1, "Gói Free"
 
-# ================== CÁC HÀM XỬ LÝ LƯU TRỮ ==================
 def load_storage(username):
     try:
         data = {}
@@ -77,102 +73,104 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== CSS CHUNG ĐƯỢC TỐI ƯU MOBILE ==================
-COMMON_CSS = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
-    body { background: #07090f; color: #fff; overflow-x: hidden; background-image: radial-gradient(circle at top right, rgba(102, 252, 241, 0.05), transparent 40%), radial-gradient(circle at bottom left, rgba(69, 243, 255, 0.05), transparent 40%); min-height: 100vh; }
-    
-    .card { background: rgba(21, 26, 33, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 24px; border: 1px solid rgba(102, 252, 241, 0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    .card-title { color: #85929e; font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
-    
-    .input-group { margin-bottom: 18px; }
-    .input-group label { display: block; color: #66fcf1; font-size: 12px; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
-    .input-group input { width: 100%; padding: 15px; background: rgba(11, 12, 16, 0.8); border: 1px solid rgba(47, 62, 70, 0.8); border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
-    .input-group input:focus { border-color: #66fcf1; box-shadow: 0 0 0 2px rgba(102, 252, 241, 0.2); }
-    
-    .btn { padding: 15px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
-    .btn-primary { background: linear-gradient(135deg, #162447, #1f4068); border: 1px solid rgba(102, 252, 241, 0.3); color: #66fcf1; }
-    .btn-primary:hover { background: #66fcf1; color: #0b0c10; }
-    .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: #2ecc71; }
-    .btn-danger { background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3); color: #e74c3c; padding: 12px 16px; }
-    
-    .svg-icon { width: 18px; height: 18px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; display: inline-flex; flex-shrink: 0; vertical-align: middle;}
-    
-    .msg { padding: 14px; border-radius: 12px; font-size: 13px; margin-bottom: 20px; text-align: center; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; animation: slideDown 0.3s ease;}
-    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .msg.success { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
-    .msg.error { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.2); }
-    
-    .switch-wrap { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: rgba(11, 12, 16, 0.5); border-radius: 12px; border: 1px solid rgba(47, 62, 70, 0.5); }
-    .switch-label { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13px; font-weight: 600; }
-    .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink:0;}
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(47, 62, 70, 0.8); transition: .4s; border-radius: 34px; }
-    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #85929e; transition: .4s; border-radius: 50%; }
-    input:checked + .slider { background-color: #66fcf1; }
-    input:checked + .slider:before { transform: translateX(20px); background-color: #0b0c10; }
+# ================== CẤU TRÚC HTML & CSS CHUẨN ==================
+HTML_HEAD = """
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
+        body { background: #07090f; color: #fff; overflow-x: hidden; background-image: radial-gradient(circle at top right, rgba(102, 252, 241, 0.05), transparent 40%), radial-gradient(circle at bottom left, rgba(69, 243, 255, 0.05), transparent 40%); min-height: 100vh; }
+        
+        .card { background: rgba(21, 26, 33, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(102, 252, 241, 0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .card-title { color: #85929e; font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; color: #66fcf1; font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
+        .input-group input { width: 100%; padding: 14px; background: rgba(11, 12, 16, 0.8); border: 1px solid rgba(47, 62, 70, 0.8); border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
+        .input-group input:focus { border-color: #66fcf1; box-shadow: 0 0 0 2px rgba(102, 252, 241, 0.2); }
+        
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
+        .btn-primary { background: linear-gradient(135deg, #162447, #1f4068); border: 1px solid rgba(102, 252, 241, 0.3); color: #66fcf1; }
+        .btn-primary:hover { background: #66fcf1; color: #0b0c10; }
+        .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: #2ecc71; }
+        .btn-danger { background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3); color: #e74c3c; padding: 12px; }
+        
+        .svg-icon { width: 18px; height: 18px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; display: inline-flex; flex-shrink: 0; vertical-align: middle;}
+        
+        .msg { padding: 14px; border-radius: 12px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; animation: slideDown 0.3s ease;}
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg.success { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
+        .msg.error { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.2); }
+        
+        .switch-wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(11, 12, 16, 0.5); border-radius: 12px; border: 1px solid rgba(47, 62, 70, 0.5); }
+        .switch-label { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13px; font-weight: 600; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink:0;}
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(47, 62, 70, 0.8); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #85929e; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #66fcf1; }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #0b0c10; }
 
-    /* Media Query for Mobile */
-    @media (max-width: 600px) {
-        .card { padding: 18px; }
-        .options-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important;}
-        .btn-flex { flex-direction: column; gap: 12px; }
-        .switch-wrap { padding: 10px; }
-        .account-card { flex-direction: column; align-items: flex-start !important; gap: 12px; }
-        .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
-        .account-card form { flex: 1; display:flex; }
-        .account-card .btn { width: 100%; }
-    }
-</style>
+        @media (max-width: 600px) {
+            .card { padding: 20px; border-radius: 16px;}
+            .btn-flex { flex-direction: column; gap: 10px; }
+        }
+    </style>
 """
 
 # ================== GIAO DIỆN ĐĂNG NHẬP ==================
-HTML_AUTH = COMMON_CSS + """
+HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
     body { display: flex; justify-content: center; align-items: center; }
-    .auth-container { max-width: 420px; width: 90%; padding: 35px 25px; margin: 15px;}
+    .auth-container { max-width: 400px; width: 90%; padding: 35px 25px; margin: 15px;}
     .logo { color: #fff; font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .logo span { color: #66fcf1; }
-    .sub { text-align: center; color: #85929e; font-size: 13px; margin-bottom: 30px;}
-    .divider { display: flex; align-items: center; text-align: center; color: #566573; font-size: 11px; margin: 24px 0; font-weight: 800; text-transform: uppercase; }
+    .sub { text-align: center; color: #85929e; font-size: 13px; margin-bottom: 25px;}
+    .divider { display: flex; align-items: center; text-align: center; color: #566573; font-size: 11px; margin: 20px 0; font-weight: 800; text-transform: uppercase; }
     .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(47, 62, 70, 0.5); }
     .divider:not(:empty)::before { margin-right: 1em; } .divider:not(:empty)::after { margin-left: 1em; }
-    .btn-oauth { width: 100%; background: #5865F2; color: #fff; border: none; text-decoration:none;}
-    .switch-link { text-align: center; margin-top: 24px; font-size: 13px; color: #85929e; }
+    .btn-oauth { background: #5865F2; color: #fff; text-decoration:none;}
+    .switch-link { text-align: center; margin-top: 20px; font-size: 13px; color: #85929e; }
     .switch-link a { color: #66fcf1; text-decoration: none; font-weight: 600; }
 </style>
-<div class="card auth-container">
-    <div class="logo">Za <span>Tools</span></div>
-    <div class="sub">Hệ thống treo voice siêu tốc</div>
-    {% if error %}<div class="msg error"><svg class="svg-icon"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
-    {% if success %}<div class="msg success"><svg class="svg-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
+</head>
+<body>
+    <div class="card auth-container">
+        <div class="logo">Za <span>Tools</span></div>
+        <div class="sub">Hệ thống treo voice siêu tốc</div>
+        {% if error %}<div class="msg error"><svg class="svg-icon"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
+        {% if success %}<div class="msg success"><svg class="svg-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
 
-    <form method="POST" action="{{ '/login' if mode == 'login' else '/register' }}">
-        <div class="input-group"><label>Tài khoản</label><input type="text" name="username" required placeholder="Tên đăng nhập..."></div>
-        <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">
-            <svg class="svg-icon"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-            {{ 'ĐĂNG NHẬP' if mode == 'login' else 'TẠO TÀI KHOẢN' }}
-        </button>
-    </form>
-    <div class="divider">Hoặc</div>
-    <a href="/login/discord" class="btn btn-oauth">
-        <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-        Đăng nhập bằng Discord
-    </a>
-    <div class="switch-link">
-        {% if mode == 'login' %}Chưa có tài khoản? <a href="/register">Tạo ngay</a>
-        {% else %}Đã có tài khoản? <a href="/login">Đăng nhập</a>{% endif %}
+        <form method="POST" action="{{ '/login' if mode == 'login' else '/register' }}">
+            <div class="input-group"><label>Tài khoản</label><input type="text" name="username" required placeholder="Tên đăng nhập..."></div>
+            <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
+            <button type="submit" class="btn btn-primary">
+                <svg class="svg-icon"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                {{ 'ĐĂNG NHẬP' if mode == 'login' else 'TẠO TÀI KHOẢN' }}
+            </button>
+        </form>
+        <div class="divider">Hoặc</div>
+        <a href="/login/discord" class="btn btn-oauth">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+            Đăng nhập bằng Discord
+        </a>
+        <div class="switch-link">
+            {% if mode == 'login' %}Chưa có tài khoản? <a href="/register">Tạo ngay</a>
+            {% else %}Đã có tài khoản? <a href="/login">Vào đăng nhập</a>{% endif %}
+        </div>
     </div>
-</div>
+</body>
+</html>
 """
 
 # ================== GIAO DIỆN DASHBOARD CHÍNH ==================
-HTML_MAIN = COMMON_CSS + """
-<title>Za Tools - Dashboard</title>
+HTML_MAIN = HTML_HEAD + """
+<title>Za Tools - Premium Dashboard</title>
 <style>
     .navbar { background: rgba(11, 12, 16, 0.9); backdrop-filter: blur(10px); padding: 15px 20px; display: flex; align-items: center; border-bottom: 1px solid rgba(102, 252, 241, 0.1); position: sticky; top: 0; z-index: 100; }
     .menu-btn { background: none; border: none; color: #fff; padding: 5px; cursor: pointer; margin-right: 12px; }
@@ -191,12 +189,13 @@ HTML_MAIN = COMMON_CSS + """
     .nav-link:hover, .nav-link.active-link { color: #66fcf1; background: rgba(102, 252, 241, 0.08); }
     .logout { margin-top: auto; color: #e74c3c; background: rgba(231, 76, 60, 0.05); }
     
-    .container { max-width: 500px; margin: 20px auto; padding: 0 15px; }
+    .container { max-width: 500px; width: 100%; margin: 20px auto; padding: 0 15px; }
     .tab-content { display: none; animation: fadeIn 0.3s; }
     .tab-content.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
     .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 15px 0; }
+    .btn-flex { display: flex; gap: 10px; margin-top: 15px; }
     
     .account-card { background: rgba(11, 12, 16, 0.5); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid rgba(47, 62, 70, 0.5); display: flex; justify-content: space-between; align-items: center; }
     .account-card .name { font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;}
@@ -218,7 +217,17 @@ HTML_MAIN = COMMON_CSS + """
     .plan-vip { border-color: rgba(255, 65, 108, 0.5); background: linear-gradient(180deg, rgba(255, 65, 108, 0.05) 0%, rgba(11,12,16,0) 100%); }
     .plan-vip .plan-title { color: #ff416c; }
     .plan-vip::before { content: 'HOT'; position: absolute; top: 10px; right: -25px; background: #ff416c; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 25px; transform: rotate(45deg); }
+    
+    @media (max-width: 600px) {
+        .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
+        .account-card form { flex: 1; display:flex; }
+        .account-card .btn { width: 100%; }
+        #qr_img { max-width: 100%; height: auto; }
+    }
 </style>
+</head>
+<body>
 
 <nav class="navbar">
     <button class="menu-btn" onclick="toggleSidebar()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
@@ -295,7 +304,7 @@ HTML_MAIN = COMMON_CSS + """
         <div class="card">
             <div class="card-title"><svg class="svg-icon"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Nhật Ký</div>
             <div class="log-box">{{ log|join('\\n') if log else 'Đang chờ hệ thống...' }}</div>
-            <form method="POST" action="/refresh"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary" style="width:100%;"><svg class="svg-icon"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> CẬP NHẬT TRẠNG THÁI</button></form>
+            <form method="POST" action="/refresh"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary"><svg class="svg-icon"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> CẬP NHẬT TRẠNG THÁI</button></form>
         </div>
     </div>
 
@@ -323,7 +332,7 @@ HTML_MAIN = COMMON_CSS + """
     <div id="tab-premium" class="tab-content">
         <div class="card">
             <div class="card-title" style="color: #ff416c;"><svg class="svg-icon"><polygon points="12 2 2 7 12 22 22 7 12 2"></polygon><polyline points="2 7 12 7 22 7"></polyline><polyline points="12 22 12 7"></polyline></svg> NÂNG CẤP DỊCH VỤ</div>
-            <p style="font-size:12px; color:#85929e; text-align:center; margin-bottom:20px;">Thanh toán bằng QR Code, hệ thống nâng cấp tự động sau 10 giây. <b>Mỗi gói có hiệu lực 30 ngày.</b></p>
+            <p style="font-size:12px; color:#85929e; text-align:center; margin-bottom:20px;">Thanh toán bằng QR Code, hệ thống nâng cấp tự động sau 10 giây. <b style="color:#fff;">Mỗi gói có hiệu lực 30 ngày.</b></p>
             
             <div class="plan-box" onclick="showQR(25000, 'STARTER')">
                 <div class="plan-title">GÓI STARTER</div>
@@ -345,7 +354,7 @@ HTML_MAIN = COMMON_CSS + """
 
             <div id="qr_area" style="display: none; text-align: center; margin-top: 20px; border-top: 1px dashed rgba(47, 62, 70, 0.5); padding-top: 20px;">
                 <p style="color: #fff; margin-bottom: 12px; font-size:14px; font-weight: 600;">Quét mã cho gói <span id="qr_plan_name" style="color:#ff416c;"></span></p>
-                <img id="qr_img" src="" style="width: 200px; border-radius: 12px; border: 2px solid #66fcf1;">
+                <img id="qr_img" src="" style="width: 220px; max-width: 100%; height: auto; border-radius: 12px; border: 2px solid #66fcf1;">
                 <div style="margin-top: 15px; font-size: 13px; background: rgba(11, 12, 16, 0.8); padding: 12px; border-radius: 10px;">
                     <span style="color:#85929e;">App ngân hàng sẽ tự điền nội dung:</span><br>
                     <b style="color:#4cdf8b; font-size: 16px; letter-spacing: 1px;">ZATOOLS {{ current_user }}</b>
@@ -423,10 +432,9 @@ def auto_bootloader():
             username = doc.get("owner"); bot_key = doc.get("bot_key")
             if not username or not bot_key: continue
             
-            # Kiểm tra xem tài khoản này có bị hết hạn hay vượt token không
             limit, _ = get_user_limit(username)
             if username not in user_bots: user_bots[username] = {}
-            if len(user_bots[username]) >= limit: continue # Chặn nếu quá số lượng cho phép
+            if len(user_bots[username]) >= limit: continue 
             
             config = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
             if bot_key not in user_bots[username]: threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
@@ -454,8 +462,7 @@ def sepay_webhook():
                     elif amount >= 45000: new_limit = max(current_limit, 5)
                     elif amount >= 25000: new_limit = max(current_limit, 2)
                     
-                    if new_limit > 1: # Nếu nạp đúng tiền
-                        # Tính thời gian 30 ngày (30 * 24 * 60 * 60 = 2592000 giây)
+                    if new_limit > 1: 
                         new_expiry = int(time.time()) + 2592000
                         users_collection.update_one(
                             {"username": username_part}, 
@@ -470,9 +477,7 @@ def index():
     if 'username' not in session: return redirect(url_for('login'))
     usr = session['username']
     
-    # Kích hoạt hàm lấy limit và ngày hết hạn
     max_tokens, expiry_info = get_user_limit(usr)
-    
     db_user = users_collection.find_one({"username": usr})
     is_admin = db_user.get('is_admin', False) if db_user else False
     
@@ -615,6 +620,7 @@ def admin_dashboard():
         </div>
         <a href="/" style="color:#66fcf1; text-decoration:none; font-weight:700; margin-top:10px; font-size: 14px;">← QUAY LẠI HỆ THỐNG</a>
     </body>
+    </html>
     """
     return render_template_string(html)
 
