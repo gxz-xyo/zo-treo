@@ -7,20 +7,18 @@ from requests_oauthlib import OAuth2Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
-# Bật Logging có cấu trúc
+# Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
-# LẤY KEY TỪ BIẾN MÔI TRƯỜNG, ĐÃ FIX LỖI 500 VỚI TIMEDELTA
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "za_tools_fallback_dev_key")
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 csrf = CSRFProtect(app)
 
-# Tắt Insecure Transport trên Production
 if os.getenv("FLASK_ENV") != "production":
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# ================== CẤU HÌNH DATABASE ==================
+# === MongoDB ===
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://dangkhoi:itachi5867@cluster0.idnlwyd.mongodb.net/?appName=Cluster0")
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -36,8 +34,7 @@ try:
         users_collection.insert_one({"username": admin_user, "password": generate_password_hash(admin_pass), "security_pin": "admin123", "max_tokens": 9999, "is_admin": True, "balance": 0})
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
-        
-    logging.info("✅ MongoDB OK! Đã kích hoạt V23.1 - Đã Fix Lỗi Login.")
+    logging.info("✅ MongoDB OK!")
 except Exception as e:
     logging.error(f"💥 Lỗi DB: {e}")
 
@@ -82,6 +79,24 @@ def load_storage(username):
         data[doc["bot_key"]] = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
     return data
 
+def get_saved_profiles(username):
+    try:
+        return list(saved_profiles_collection.find({"owner": username}))
+    except:
+        return []
+
+def save_storage_item(bot_key, config, username):
+    try:
+        accounts_collection.update_one({"bot_key": bot_key}, {"$set": {**config, "owner": username}}, upsert=True)
+    except:
+        pass
+
+def delete_storage_item(bot_key, username):
+    try:
+        accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
+    except:
+        pass
+
 def process_sepay_transaction(tid, amount, raw_content):
     if transactions_collection.find_one({"_id": str(tid)}): return False
     normalized_content = raw_content.lower().replace(" ", "").replace("-", "").replace("_", "")
@@ -95,7 +110,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== HTML & CSS CHUNG ==================
+# ================== HTML (giữ nguyên như đã gửi trước đó) ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -150,15 +165,23 @@ HTML_HEAD = """
         .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         .theme-toggle-btn { background: var(--account-card); border: 1px solid var(--input-border); color: var(--text-main); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink:0;}
         .theme-toggle-btn:hover { background: var(--accent-hover); color: var(--accent); }
-        
         #global-loader { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:var(--accent); font-weight:800; font-size:14px; letter-spacing:1px; backdrop-filter:blur(5px);}
         .spinner { width: 50px; height: 50px; border: 4px solid rgba(102, 252, 241, 0.2); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .switch-wrap { display: flex; align-items: center; justify-content: space-between; background: var(--account-card); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--input-border);}
+        .switch-label { font-size: 12px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 6px;}
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(18px); }
         @media (max-width: 600px) { .card { padding: 20px; border-radius: 16px;} .btn-flex { flex-direction: column; gap: 10px; } }
     </style>
+</head>
+<body>
 """
 
-# ================== GIAO DIỆN AUTH ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
@@ -181,8 +204,8 @@ HTML_AUTH = HTML_HEAD + """
             {% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}
         </div>
         
-        {% if error %}<div class="msg error"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
-        {% if success %}<div class="msg success"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
+        {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+        {% if success %}<div class="msg success">{{ success }}</div>{% endif %}
 
         <form method="POST" action="{{ '/' + mode }}" onsubmit="showLoader()">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -222,7 +245,6 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== GIAO DIỆN DASHBOARD CHÍNH ==================
 HTML_MAIN = HTML_HEAD + """
 <title>Za Tools - Premium Dashboard</title>
 <style>
@@ -487,7 +509,6 @@ HTML_MAIN = HTML_HEAD + """
 </html>
 """
 
-# ================== TRANG ADMIN PANEL ==================
 HTML_ADMIN = HTML_HEAD + """
 <title>Admin Panel - Za Tools</title>
 <style>
@@ -495,9 +516,6 @@ HTML_ADMIN = HTML_HEAD + """
     .stat-box { background: var(--input-bg); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; border: 1px solid var(--input-border); font-weight: 600; color: var(--text-muted);}
     .stat-val { color: var(--text-main); font-size: 18px; }
     .action-box { background: rgba(102, 252, 241, 0.05); border: 1px solid var(--accent); padding: 20px; border-radius: 15px; margin-top: 25px;}
-    #global-loader { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:var(--accent); font-weight:800; font-size:14px; letter-spacing:1px; backdrop-filter:blur(5px);}
-    .spinner { width: 50px; height: 50px; border: 4px solid rgba(102, 252, 241, 0.2); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 <body>
     <div id="global-loader"><div class="spinner"></div>ĐANG XỬ LÝ...</div>
@@ -543,39 +561,52 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG AN TOÀN (THREAD-SAFE) ==================
+# ================== HÀM CHẠY LUỒNG AN TOÀN ==================
 def run_bot(bot_key, config, username):
-    token, guild_id, channel_id = config['token'], config['guild_id'], config['channel_id']
-    mute, deaf = config.get('mute', True), config.get('deaf', True)
-    video, stream = config.get('video', False), config.get('stream', False)
+    token = config['token']
+    guild_id = config['guild_id']
+    channel_id = config['channel_id']
+    mute = config.get('mute', True)
+    deaf = config.get('deaf', True)
+    video = config.get('video', False)
+    stream = config.get('stream', False)
 
     stop_event = threading.Event()
     ws_container = {"ws": None}
 
     with bots_lock:
-        if username not in user_bots: user_bots[username] = {}
-        user_bots[username][bot_key] = {'connected': False, 'log': ["🚀 Khởi tạo tiến trình an toàn..."], 'running': True, 'display_name': 'Đang kết nối...', 'stop_event': stop_event}
+        if username not in user_bots:
+            user_bots[username] = {}
+        user_bots[username][bot_key] = {'connected': False, 'log': ["🚀 Khởi tạo tiến trình..."], 'running': True, 'display_name': 'Đang kết nối...', 'stop_event': stop_event}
 
     def add_log(msg):
         with bots_lock:
             if username in user_bots and bot_key in user_bots[username]:
                 timestamp = time.strftime('%H:%M:%S')
                 user_bots[username][bot_key]['log'].append(f"[{timestamp}] {msg}")
-                if len(user_bots[username][bot_key]['log']) > 50: user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
+                if len(user_bots[username][bot_key]['log']) > 50:
+                    user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
 
     def update_status(st):
         with bots_lock:
-            if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
+            if username in user_bots and bot_key in user_bots[username]:
+                user_bots[username][bot_key]['connected'] = st
 
     def send_voice_update(ws_client):
-        if not ws_client or not ws_client.keep_running: return
-        try: ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
-        except: pass
+        if not ws_client or not ws_client.keep_running:
+            return
+        try:
+            ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
+        except:
+            pass
 
     def on_message(ws_client, message):
-        try: data = json.loads(message)
-        except: return
-        op, t = data.get('op'), data.get('t')
+        try:
+            data = json.loads(message)
+        except:
+            return
+        op = data.get('op')
+        t = data.get('t')
 
         if op == 10:
             ws_client.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux"}, "compress": False}}))
@@ -583,16 +614,21 @@ def run_bot(bot_key, config, username):
         elif op == 0:
             if t == 'READY':
                 with bots_lock:
-                    if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['display_name'] = data['d']['user']['username']
+                    if username in user_bots and bot_key in user_bots[username]:
+                        user_bots[username][bot_key]['display_name'] = data['d']['user']['username']
                 add_log(f"🎯 Đăng nhập: {data['d']['user']['username']}")
                 send_voice_update(ws_client)
             elif t == 'VOICE_STATE_UPDATE':
-                if data['d'].get('channel_id') == channel_id:
-                    update_status(True); add_log("✅ Đã chốt vị trí trong phòng thoại!")
-                elif data['d'].get('channel_id') is None:
-                    update_status(False); add_log("⚠️ Bị văng! Hệ thống đang nối lại...")
+                d = data['d']
+                if d.get('channel_id') == channel_id:
+                    update_status(True)
+                    add_log("✅ Đã chốt vị trí trong phòng thoại!")
+                elif d.get('channel_id') is None:
+                    update_status(False)
+                    add_log("⚠️ Bị văng! Hệ thống đang nối lại...")
                     send_voice_update(ws_client)
-        elif op == 9: ws_client.close()
+        elif op == 9:
+            ws_client.close()
 
     def on_close(ws_client, code, msg):
         update_status(False)
@@ -601,24 +637,42 @@ def run_bot(bot_key, config, username):
             time.sleep(5)
             start_ws()
 
+    def on_error(ws_client, error):
+        add_log(f"💥 Lỗi: {error}")
+
     def heartbeat_loop():
         while not stop_event.is_set():
-            if stop_event.wait(41): break
+            if stop_event.wait(41):
+                break
             if ws_container["ws"] and ws_container["ws"].keep_running:
-                try: ws_container["ws"].send(json.dumps({"op": 1, "d": None}))
-                except: pass
+                try:
+                    ws_container["ws"].send(json.dumps({"op": 1, "d": None}))
+                except:
+                    pass
 
     def keep_alive_loop():
         while not stop_event.is_set():
-            if stop_event.wait(30): break
-            if ws_container["ws"] and ws_container["ws"].keep_running: send_voice_update(ws_container["ws"])
+            if stop_event.wait(30):
+                break
+            if ws_container["ws"] and ws_container["ws"].keep_running:
+                send_voice_update(ws_container["ws"])
 
     def start_ws():
-        if stop_event.is_set(): return
-        try: gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
-        except: time.sleep(5); start_ws(); return
+        if stop_event.is_set():
+            return
+        try:
+            gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
+        except:
+            time.sleep(5)
+            start_ws()
+            return
         
-        ws_container["ws"] = websocket.WebSocketApp(gateway + "/?v=9&encoding=json", on_message=on_message, on_close=on_close, on_error=lambda w,e: add_log(f"💥 Lỗi: {e}"))
+        ws_container["ws"] = websocket.WebSocketApp(
+            gateway + "/?v=9&encoding=json",
+            on_message=on_message,
+            on_close=on_close,
+            on_error=on_error
+        )
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         threading.Thread(target=keep_alive_loop, daemon=True).start()
         ws_container["ws"].run_forever()
@@ -628,47 +682,64 @@ def run_bot(bot_key, config, username):
 def auto_bootloader():
     try:
         for doc in accounts_collection.find():
-            username = doc.get("owner"); bot_key = doc.get("bot_key")
-            if not username or not bot_key: continue
+            username = doc.get("owner")
+            bot_key = doc.get("bot_key")
+            if not username or not bot_key:
+                continue
             limit, _, _, _ = get_user_limit(username)
             with bots_lock:
                 current_running = sum(1 for v in user_bots.get(username, {}).values() if v.get('running', False))
-            if current_running >= limit: continue 
-            config = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
+            if current_running >= limit:
+                continue
+            config = {
+                'token': doc['token'],
+                'guild_id': doc['guild_id'],
+                'channel_id': doc['channel_id'],
+                'mute': doc.get('mute', True),
+                'deaf': doc.get('deaf', True),
+                'video': doc.get('video', False),
+                'stream': doc.get('stream', False)
+            }
             threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
             time.sleep(0.5)
-    except: pass
+    except Exception as e:
+        logging.error(f"Auto-boot error: {e}")
+
 threading.Thread(target=auto_bootloader, daemon=True).start()
 
-# ================== SEPAY WEBHOOK ==================
+# ================== ROUTES ==================
 @app.route('/sepay_webhook', methods=['POST'])
 @csrf.exempt
 def sepay_webhook():
     try:
         data = request.json
-        if not data: return jsonify({"error": "No data"}), 400
+        if not data:
+            return jsonify({"error": "No data"}), 400
         tid = data.get('id', data.get('transactionId', str(int(time.time()))))
         amount = int(data.get('transferAmount', data.get('amount', 0)))
         raw_content = data.get('content', data.get('transferContent', ''))
         process_sepay_transaction(tid, amount, raw_content)
         return jsonify({"success": True})
-    except Exception as e: return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/get_balance')
 def api_get_balance():
-    if 'username' not in session: return jsonify({"balance": 0})
+    if 'username' not in session:
+        return jsonify({"balance": 0})
     user = users_collection.find_one({"username": session['username']})
     return jsonify({"balance": user.get('balance', 0) if user else 0})
 
-# ================== MUA GÓI BẰNG COIN ==================
 @app.route('/buy_plan', methods=['POST'])
 def buy_plan():
-    if 'username' not in session: return redirect(url_for('login'))
+    if 'username' not in session:
+        return redirect(url_for('login'))
     usr = session['username']
     plan = request.form.get('plan')
     costs = {"STARTER": 20000, "PRO": 40000, "VIP": 300000}
     limits = {"STARTER": 2, "PRO": 5, "VIP": 35}
-    if plan not in costs: return redirect(url_for('index', tab='premium'))
+    if plan not in costs:
+        return redirect(url_for('index', tab='premium'))
     
     user_db = users_collection.find_one({"username": usr})
     current_balance = user_db.get('balance', 0)
@@ -685,30 +756,45 @@ def buy_plan():
         session['flash_type'] = "error"
     return redirect(url_for('index', tab='premium'))
 
-# ================== ROUTES ỨNG DỤNG ==================
 @app.route('/')
 def index():
-    if 'username' not in session: return redirect(url_for('login'))
+    if 'username' not in session:
+        return redirect(url_for('login'))
     usr = session['username']
     max_tokens, expiry_info, plan_name, expiry_color = get_user_limit(usr)
     db_user = users_collection.find_one({"username": usr})
     is_admin = db_user.get('is_admin', False) if db_user else False
     balance = db_user.get('balance', 0) if db_user else 0
-    with bots_lock: active_bots = [(k, v) for k, v in user_bots.get(usr, {}).items() if v.get('running', False)]
+    with bots_lock:
+        active_bots = [(k, v) for k, v in user_bots.get(usr, {}).items() if v.get('running', False)]
     log = active_bots[0][1].get('log', []) if active_bots else []
     
-    return render_template_string(HTML_MAIN, bot_items=active_bots, current_user=usr, balance=balance, plan_name=plan_name,
-                                  saved_profiles=get_saved_profiles(usr), max_tokens=max_tokens, 
-                                  running_count=len(active_bots), is_admin=is_admin, expiry_info=expiry_info, expiry_color=expiry_color,
-                                  flash_msg=session.pop('flash_msg', None), flash_type=session.pop('flash_type', 'success'),
-                                  active_tab=request.args.get('tab', 'None'), log=log)
+    saved_profiles = get_saved_profiles(usr)
+    
+    return render_template_string(HTML_MAIN,
+                                  bot_items=active_bots,
+                                  current_user=usr,
+                                  balance=balance,
+                                  plan_name=plan_name,
+                                  saved_profiles=saved_profiles,
+                                  max_tokens=max_tokens,
+                                  running_count=len(active_bots),
+                                  is_admin=is_admin,
+                                  expiry_info=expiry_info,
+                                  expiry_color=expiry_color,
+                                  flash_msg=session.pop('flash_msg', None),
+                                  flash_type=session.pop('flash_type', 'success'),
+                                  active_tab=request.args.get('tab', 'None'),
+                                  log=log)
 
 @app.route('/start', methods=['POST'])
 def start():
-    if 'username' not in session: return redirect(url_for('login'))
+    if 'username' not in session:
+        return redirect(url_for('login'))
     usr = session['username']
     max_tokens, _, _, _ = get_user_limit(usr)
-    with bots_lock: current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
+    with bots_lock:
+        current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     bot_key = f"{request.form['guild_id']}_{request.form['channel_id']}"
     
     if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
@@ -716,11 +802,12 @@ def start():
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
 
-    config = {k:v for k,v in request.form.items() if k not in ['profile_name', 'csrf_token']}
+    config = {k: v for k, v in request.form.items() if k not in ['profile_name', 'csrf_token']}
     save_storage_item(bot_key, config, usr)
     with bots_lock:
-        if usr not in user_bots: user_bots[usr] = {}
-        if bot_key in user_bots[usr]: 
+        if usr not in user_bots:
+            user_bots[usr] = {}
+        if bot_key in user_bots[usr]:
             user_bots[usr][bot_key]['stop_event'].set()
             user_bots[usr][bot_key]['running'] = False
     threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
@@ -728,25 +815,30 @@ def start():
 
 @app.route('/start_saved', methods=['POST'])
 def start_saved():
-    usr = session.get('username')
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    usr = session['username']
     max_tokens, _, _, _ = get_user_limit(usr)
-    with bots_lock: current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
+    with bots_lock:
+        current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     
     prof_id = request.form.get('profile_id')
-    try: prof = saved_profiles_collection.find_one({"_id": prof_id, "owner": usr}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id), "owner": usr})
-    except: prof = None
+    try:
+        prof = saved_profiles_collection.find_one({"_id": prof_id, "owner": usr}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id), "owner": usr})
+    except:
+        prof = None
     if prof:
         bot_key = f"{prof['guild_id']}_{prof['channel_id']}"
         if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
             session['flash_msg'] = f"Cần Nạp/Gia Hạn VIP để chạy! Giới hạn: {max_tokens}"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='saved'))
-        config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
-        config['bot_key'] = bot_key
+        config = {k: v for k, v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         save_storage_item(bot_key, config, usr)
         with bots_lock:
-            if usr not in user_bots: user_bots[usr] = {}
-            if bot_key in user_bots[usr]: 
+            if usr not in user_bots:
+                user_bots[usr] = {}
+            if bot_key in user_bots[usr]:
                 user_bots[usr][bot_key]['stop_event'].set()
                 user_bots[usr][bot_key]['running'] = False
         threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
@@ -754,7 +846,8 @@ def start_saved():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'username' in session: return redirect(url_for('index'))
+    if 'username' in session:
+        return redirect(url_for('index'))
     if request.method == 'POST':
         username = request.form['username'].strip().lower()
         pwd = request.form['password'].strip()
@@ -771,7 +864,8 @@ def register():
     if request.method == 'POST':
         usr = request.form['username'].strip().lower()
         pin = request.form['pin'].strip()
-        if users_collection.find_one({"username": usr}): return render_template_string(HTML_AUTH, mode='register', error="Tên đăng nhập đã tồn tại!")
+        if users_collection.find_one({"username": usr}):
+            return render_template_string(HTML_AUTH, mode='register', error="Tên đăng nhập đã tồn tại!")
         users_collection.insert_one({"username": usr, "password": generate_password_hash(request.form['password'].strip()), "security_pin": pin, "max_tokens": 1, "expiry_date": 0, "balance": 0})
         return render_template_string(HTML_AUTH, mode='login', success="Đăng ký thành công! Hãy nhớ mã PIN.")
     return render_template_string(HTML_AUTH, mode='register')
@@ -791,23 +885,30 @@ def forgot():
 
 @app.route('/save_profile', methods=['POST'])
 def save_profile():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     prof_name = request.form.get('profile_name', '').strip() or f"Config {int(time.time())}"
-    config_dict = {k:v for k,v in request.form.to_dict().items() if k != 'csrf_token'}
+    config_dict = {k: v for k, v in request.form.to_dict().items() if k != 'csrf_token'}
     saved_profiles_collection.insert_one({**config_dict, "owner": session['username'], "_id": str(int(time.time())), "profile_name": prof_name})
     session['flash_msg'] = "Đã lưu vào Kho dữ liệu!"
     return redirect(url_for('index', tab='saved'))
 
 @app.route('/delete_profile', methods=['POST'])
 def del_prof():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     pid = request.form.get('profile_id')
     try:
         if not saved_profiles_collection.delete_one({"_id": pid, "owner": session['username']}).deleted_count:
             saved_profiles_collection.delete_one({"_id": ObjectId(pid), "owner": session['username']})
-    except: pass
+    except:
+        pass
     return redirect(url_for('index', tab='saved'))
 
 @app.route('/stop', methods=['POST'])
 def stop():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     usr = session['username']
     bot_key = request.form.get('bot_key')
     delete_storage_item(bot_key, usr)
@@ -819,32 +920,41 @@ def stop():
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/login/discord')
-def login_discord(): return redirect(OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify']).authorization_url(DISCORD_AUTH_URL)[0])
+def login_discord():
+    return redirect(OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify']).authorization_url(DISCORD_AUTH_URL)[0])
 
 @app.route('/callback/discord')
 def cb_discord():
     discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord")
     discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=request.url.replace('http://', 'https://'))
     usr = f"{discord.get('https://discord.com/api/users/@me').json()['username']}_dc"
-    if not users_collection.find_one({"username": usr}): users_collection.insert_one({"username": usr, "oauth": "discord", "security_pin": "discord", "max_tokens": 1, "expiry_date": 0, "balance": 0})
+    if not users_collection.find_one({"username": usr}):
+        users_collection.insert_one({"username": usr, "oauth": "discord", "security_pin": "discord", "max_tokens": 1, "expiry_date": 0, "balance": 0})
     session['username'] = usr
     session.permanent = True
     return redirect(url_for('index'))
 
 @app.route('/logout')
-def logout(): session.clear(); return redirect(url_for('login'))
-@app.route('/ping')
-def ping(): return "ok"
-@app.route('/refresh', methods=['POST'])
-def refresh(): return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
-# ================== TRANG ADMIN PANEL ==================
+@app.route('/ping')
+def ping():
+    return "ok"
+
+@app.route('/refresh', methods=['POST'])
+def refresh():
+    return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
+
 @app.route('/admin_dangkhoi')
 def admin_dashboard():
-    if session.get('username') != '28012010': return redirect(url_for('index'))
+    if session.get('username') != '28012010':
+        return redirect(url_for('index'))
     total_users = users_collection.count_documents({})
     total_bots = accounts_collection.count_documents({})
-    with bots_lock: active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
+    with bots_lock:
+        active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
     
     pipeline = [{"$group": {"_id": None, "total": {"$sum": "$amount"}}}]
     res = list(transactions_collection.aggregate(pipeline))
@@ -856,7 +966,8 @@ def admin_dashboard():
 
 @app.route('/admin_action', methods=['POST'])
 def admin_action():
-    if session.get('username') != '28012010': return redirect(url_for('index'))
+    if session.get('username') != '28012010':
+        return redirect(url_for('index'))
     action = request.form.get('action')
     
     if action == 'add_coin':
@@ -866,7 +977,8 @@ def admin_action():
         if u:
             users_collection.update_one({"username": t_user}, {"$inc": {"balance": amount}})
             session['admin_msg'] = f"Đã cộng {amount} Coin cho {t_user}!"
-        else: session['admin_msg'] = "Không tìm thấy user này!"
+        else:
+            session['admin_msg'] = "Không tìm thấy user này!"
             
     elif action == 'sync_sepay':
         try:
@@ -876,11 +988,17 @@ def admin_action():
             synced_count = 0
             if 'transactions' in data:
                 for t in data['transactions']:
-                    tid, amt, content = str(t['id']), int(float(t['amount_in'])), t['transaction_content']
-                    if process_sepay_transaction(tid, amt, content): synced_count += 1
+                    tid = str(t['id'])
+                    amt = int(float(t['amount_in']))
+                    content = t['transaction_content']
+                    if process_sepay_transaction(tid, amt, content):
+                        synced_count += 1
             session['admin_msg'] = f"Đồng bộ hoàn tất! Tìm thấy và cộng bù {synced_count} giao dịch bị sót."
-        except Exception as e: session['admin_msg'] = f"Lỗi đồng bộ: {str(e)}"
+        except Exception as e:
+            session['admin_msg'] = f"Lỗi đồng bộ: {str(e)}"
             
     return redirect(url_for('admin_dashboard'))
 
-if __name__ == '__main__': app.run(host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
