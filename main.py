@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.3 - Fix Stream Cờ Đỏ & Xoay Vòng.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.4 - Custom RPC Tối Thượng.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -359,10 +359,33 @@ HTML_MAIN = HTML_HEAD + """
                     <span style="display:flex; align-items:center; gap:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path></svg> Thiết lập kết nối</span>
                 </div>
                 <div class="input-group"><label>Tên gợi nhớ (Nếu lưu)</label><input type="text" name="profile_name" placeholder="Ví dụ: Acc Cày Cấp..."></div>
-                <div class="input-group"><label>Trạng thái Game (Treo status)</label><input type="text" name="status_text" placeholder="Ví dụ: Đang chơi Valorant..."></div>
                 <div class="input-group"><label>Discord Token</label><input type="text" name="token" required placeholder="Nhập Token của bạn..."></div>
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required></div>
                 <div class="input-group"><label>ID Kênh Voice</label><input type="text" name="channel_id" required></div>
+                
+                <!-- HỆ THỐNG CUSTOM RPC TỐI THƯỢNG -->
+                <div style="border: 1px dashed var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 15px; background: rgba(102, 252, 241, 0.02);">
+                    <div style="color: var(--accent); font-size: 12px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Cấu hình Custom RPC (Phông bạt Profile)</div>
+                    
+                    <div class="input-group"><label>Tiêu đề Game</label><input type="text" name="status_text" placeholder="VD: ZaTools Premium..."></div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><label>Dòng chi tiết 1</label><input type="text" name="rpc_details" placeholder="VD: Đang leo Rank..."></div>
+                        <div class="input-group" style="flex:1;"><label>Dòng chi tiết 2</label><input type="text" name="rpc_state" placeholder="VD: Trận 5/10..."></div>
+                    </div>
+                    
+                    <div class="input-group"><label>Link Ảnh Lớn (HTTPS)</label><input type="text" name="rpc_image" placeholder="https://domain.com/anh.jpg"></div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><label>Tên Nút 1</label><input type="text" name="rpc_b1_name" placeholder="VD: Facebook"></div>
+                        <div class="input-group" style="flex:1;"><label>Link Nút 1</label><input type="text" name="rpc_b1_url" placeholder="https://..."></div>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><label>Tên Nút 2</label><input type="text" name="rpc_b2_name" placeholder="VD: Thuê Tool Ngay"></div>
+                        <div class="input-group" style="flex:1;"><label>Link Nút 2</label><input type="text" name="rpc_b2_url" placeholder="https://..."></div>
+                    </div>
+                </div>
                 
                 <div class="options-grid">
                     <div class="switch-wrap"><div class="switch-label">Mute</div><label class="switch"><input type="checkbox" name="mute" checked><span class="slider"></span></label></div>
@@ -648,12 +671,11 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX CỜ ĐỎ STREAM) ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (CUSTOM RPC CORE TỐI THƯỢNG) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
     channel_id = config.get('channel_id')
-    status_text = config.get('status_text', '')
     
     mute = str(config.get('mute', 'False')).lower() in ['true', 'on', '1']
     deaf = str(config.get('deaf', 'False')).lower() in ['true', 'on', '1']
@@ -674,11 +696,9 @@ def run_bot(bot_key, config, username):
     def update_status(st):
         if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
 
-    # Hàm gửi update có tham số init_stream để quản lý OP Code 18
     def send_voice_update(ws_client, init_stream=False):
         if not ws_client or not ws_client.keep_running: return
         try: 
-            # Lệnh OP 4: Xin vào Voice, bật Mute/Deaf/Video (Cam)
             ws_client.send(json.dumps({
                 "op": 4, 
                 "d": {
@@ -690,7 +710,6 @@ def run_bot(bot_key, config, username):
                 }
             }))
             
-            # Lệnh OP 18 (CỰC KỲ QUAN TRỌNG): Để báo cho Discord là mình Đang Trực Tiếp (Live)
             if stream and init_stream:
                 def fire_stream():
                     if ws_client and ws_client.keep_running:
@@ -706,9 +725,7 @@ def run_bot(bot_key, config, username):
                             }))
                             add_log("🔴 Đã bung cờ Đang Trực Tiếp (Live ảo)!")
                         except: pass
-                # Đợi 1.5s cho Discord đẩy Bot vào phòng rồi mới tung cờ Live lên
                 threading.Timer(1.5, fire_stream).start()
-                
         except: pass
 
     def on_message(ws_client, message):
@@ -721,8 +738,39 @@ def run_bot(bot_key, config, username):
 
         if op == 10:
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+            
+            # XÂY DỰNG KHỐI CUSTOM RPC THẦN THÁNH BẰNG OP 2
             presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
-            if status_text: presence_data["activities"].append({"name": status_text, "type": 0})
+            
+            status_text = config.get('status_text', '')
+            if status_text:
+                activity = {
+                    "name": status_text,
+                    "type": 0,
+                    "application_id": "1504310281625403544" # App ID chính chủ Discord để được duyệt nút
+                }
+                
+                if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
+                if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
+                
+                if config.get('rpc_image'):
+                    activity["assets"] = {"large_image": config.get('rpc_image'), "large_text": status_text}
+                
+                buttons = []
+                metadata_urls = []
+                if config.get('rpc_b1_name') and config.get('rpc_b1_url'):
+                    buttons.append(config.get('rpc_b1_name'))
+                    metadata_urls.append(config.get('rpc_b1_url'))
+                if config.get('rpc_b2_name') and config.get('rpc_b2_url'):
+                    buttons.append(config.get('rpc_b2_name'))
+                    metadata_urls.append(config.get('rpc_b2_url'))
+                    
+                if buttons:
+                    activity["buttons"] = buttons
+                    activity["metadata"] = {"button_urls": metadata_urls}
+                    
+                presence_data["activities"].append(activity)
+                add_log("🎨 Gắn khối Custom RPC thành công!")
                 
             ws_client.send(json.dumps({
                 "op": 2, 
@@ -800,6 +848,13 @@ def auto_bootloader():
                 'guild_id': doc.get('guild_id'), 
                 'channel_id': doc.get('channel_id'), 
                 'status_text': doc.get('status_text', ''),
+                'rpc_details': doc.get('rpc_details', ''),
+                'rpc_state': doc.get('rpc_state', ''),
+                'rpc_image': doc.get('rpc_image', ''),
+                'rpc_b1_name': doc.get('rpc_b1_name', ''),
+                'rpc_b1_url': doc.get('rpc_b1_url', ''),
+                'rpc_b2_name': doc.get('rpc_b2_name', ''),
+                'rpc_b2_url': doc.get('rpc_b2_url', ''),
                 'mute': doc.get('mute'), 
                 'deaf': doc.get('deaf'), 
                 'video': doc.get('video'), 
@@ -904,6 +959,13 @@ def start():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
+        'rpc_details': request.form.get('rpc_details', '').strip(),
+        'rpc_state': request.form.get('rpc_state', '').strip(),
+        'rpc_image': request.form.get('rpc_image', '').strip(),
+        'rpc_b1_name': request.form.get('rpc_b1_name', '').strip(),
+        'rpc_b1_url': request.form.get('rpc_b1_url', '').strip(),
+        'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(),
+        'rpc_b2_url': request.form.get('rpc_b2_url', '').strip(),
         'mute': request.form.get('mute') == 'on',
         'deaf': request.form.get('deaf') == 'on',
         'video': request.form.get('video') == 'on',
@@ -950,6 +1012,13 @@ def save_profile():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
+        'rpc_details': request.form.get('rpc_details', '').strip(),
+        'rpc_state': request.form.get('rpc_state', '').strip(),
+        'rpc_image': request.form.get('rpc_image', '').strip(),
+        'rpc_b1_name': request.form.get('rpc_b1_name', '').strip(),
+        'rpc_b1_url': request.form.get('rpc_b1_url', '').strip(),
+        'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(),
+        'rpc_b2_url': request.form.get('rpc_b2_url', '').strip(),
         'mute': request.form.get('mute') == 'on',
         'deaf': request.form.get('deaf') == 'on',
         'video': request.form.get('video') == 'on',
