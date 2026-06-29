@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22 - Tính năng Khôi phục Pass & Admin Panel.")
+    print("✅ MongoDB OK! Đã kích hoạt V22 - Khôi phục Nút Login Discord.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -84,7 +84,6 @@ def delete_storage_item(bot_key, username):
 
 # ================== HÀM XỬ LÝ TIỀN CHỐNG TRÙNG LẶP ==================
 def process_sepay_transaction(tid, amount, raw_content):
-    # Nếu mã giao dịch đã xử lý rồi thì bỏ qua
     if transactions_collection.find_one({"_id": str(tid)}): return False
     
     normalized_content = raw_content.lower().replace(" ", "").replace("-", "").replace("_", "")
@@ -93,7 +92,6 @@ def process_sepay_transaction(tid, amount, raw_content):
             normalized_db_username = user['username'].lower().replace(" ", "").replace("-", "").replace("_", "")
             if "zatools" + normalized_db_username in normalized_content:
                 users_collection.update_one({"username": user['username']}, {"$inc": {"balance": amount}})
-                # Lưu mã giao dịch vào db
                 transactions_collection.insert_one({"_id": str(tid), "user": user['username'], "amount": amount, "time": time.time()})
                 print(f"💰 SePay: Đã nạp {amount} cho {user['username']} (Mã: {tid})")
                 return True
@@ -154,10 +152,11 @@ HTML_HEAD = """
         .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         .theme-toggle-btn { background: var(--account-card); border: 1px solid var(--input-border); color: var(--text-main); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink:0;}
         .theme-toggle-btn:hover { background: var(--accent-hover); color: var(--accent); }
+        @media (max-width: 600px) { .card { padding: 20px; border-radius: 16px;} .btn-flex { flex-direction: column; gap: 10px; } }
     </style>
 """
 
-# ================== GIAO DIỆN ĐĂNG NHẬP / ĐĂNG KÝ / QUÊN MK ==================
+# ================== GIAO DIỆN ĐĂNG NHẬP (ĐÃ KHÔI PHỤC NÚT DISCORD) ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
@@ -169,7 +168,10 @@ HTML_AUTH = HTML_HEAD + """
     .divider { display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; margin: 20px 0; font-weight: 800; text-transform: uppercase; }
     .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--input-border); transition: 0.3s;}
     .divider:not(:empty)::before { margin-right: 1em; } .divider:not(:empty)::after { margin-left: 1em; }
-    .btn-oauth { background: #5865F2; color: #fff; text-decoration:none; border:none;}
+    
+    .btn-oauth { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; background: #5865F2; color: #fff; text-decoration:none; margin-bottom: 15px;}
+    .btn-oauth:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4); }
+    
     .switch-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
     .switch-link a { color: var(--accent); text-decoration: none; font-weight: 600; cursor: pointer; }
     .theme-corner { position: absolute; top: 20px; right: 20px; }
@@ -192,6 +194,13 @@ HTML_AUTH = HTML_HEAD + """
             <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
             <button type="submit" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> ĐĂNG NHẬP</button>
         </form>
+        
+        <div class="divider">Hoặc</div>
+        <a href="/login/discord" class="btn-oauth">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+            Đăng nhập bằng Discord
+        </a>
+        
         <div class="switch-link">
             Chưa có tài khoản? <a href="/register">Tạo ngay</a><br><br>
             <a href="/forgot">Quên mật khẩu?</a>
@@ -374,7 +383,7 @@ HTML_MAIN = HTML_HEAD + """
         <div class="card">
             <div class="card-title"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Nhật Ký</div>
             <div class="log-box">{{ log|join('\\n') if log else 'Đang chờ hệ thống...' }}</div>
-            <form method="POST" action="/refresh"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary" style="width:100%;"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> LÀM MỚI</button></form>
+            <form method="POST" action="/refresh"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary" style="width:100%;"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> CẬP NHẬT TRẠNG THÁI</button></form>
         </div>
     </div>
 
@@ -547,7 +556,7 @@ HTML_MAIN = HTML_HEAD + """
 </html>
 """
 
-# ================== ADMIN PANEL (MỚI) ==================
+# ================== TRANG ADMIN PANEL ==================
 HTML_ADMIN = HTML_HEAD + """
 <title>Admin Panel - Za Tools</title>
 <style>
@@ -735,7 +744,6 @@ def buy_plan():
     usr = session['username']
     plan = request.form.get('plan')
     
-    # BẢNG GIÁ MỚI THEO YÊU CẦU
     costs = {"STARTER": 20000, "PRO": 40000, "VIP": 300000}
     limits = {"STARTER": 2, "PRO": 5, "VIP": 35}
     
