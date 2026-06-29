@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.7 - Ẩn App ID & Fix Giựt Cờ Stream.")
+    print("✅ MongoDB OK! Đã kích hoạt V23.0 - Bổ sung Landing Page Scroll Reveal.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -40,7 +40,7 @@ DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token'
 
 def get_base_url(): return "https://zo-treo.onrender.com"
 
-# ================== HÀM KIỂM TRA THỜI HẠN GÓI ==================
+# ================== CÁC HÀM TIỆN ÍCH CORE ==================
 def get_user_limit(username):
     user = users_collection.find_one({"username": username})
     if not user: return 1, "Gói Free", "Free"
@@ -85,7 +85,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== CẤU TRÚC HTML & CSS ==================
+# ================== CSS CHUNG BIẾN SÁNG TỐI ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -97,7 +97,7 @@ HTML_HEAD = """
         if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
         :root {
             --bg-main: #07090f; --text-main: #fff; --text-muted: #85929e; --accent: #66fcf1;
             --accent-hover: rgba(102, 252, 241, 0.1); --card-bg: rgba(21, 26, 33, 0.6);
@@ -117,7 +117,7 @@ HTML_HEAD = """
             --log-text: #059669; --shadow: rgba(0,0,0,0.08); --switch-bg: #cbd5e1;
             --success-text: #059669; --danger-text: #dc2626; --coin-color: #d4ac0d; --plan-text: #e11d48;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg-main); color: var(--text-main); overflow-x: hidden; min-height: 100vh; transition: background 0.3s, color 0.3s; }
         .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border-light); box-shadow: 0 8px 32px var(--shadow); transition: 0.3s;}
         .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; justify-content: space-between; gap: 8px;}
@@ -125,7 +125,7 @@ HTML_HEAD = """
         .input-group label { display: block; color: var(--accent); font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; color: var(--text-main); font-size: 14px; outline: none; transition: 0.3s; }
         .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-hover); }
-        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; text-decoration: none;}
         .btn-primary { background: var(--btn-bg); border: 1px solid var(--accent-hover); color: #fff; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-hover); }
         .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: var(--success-text); }
@@ -174,14 +174,189 @@ THEME_SCRIPT = """
     </script>
 """
 
+# ================== TRANG MẶT TIỀN (LANDING PAGE - HIỆU ỨNG SCROLL REVEAL) ==================
+HTML_LANDING = HTML_HEAD + """
+<title>Za Tools - Giữ Discord Luôn Online 24/7</title>
+<style>
+    /* Nền đặc biệt cho Landing Page */
+    body {
+        background: #09090b; /* Màu tối trầm sang trọng */
+        background-image: 
+            radial-gradient(circle at 15% 50%, rgba(102, 252, 241, 0.08), transparent 25%),
+            radial-gradient(circle at 85% 30%, rgba(255, 65, 108, 0.08), transparent 25%);
+        color: #fff;
+    }
+    
+    /* Hiệu ứng thanh cuộn hiện ra dần dần (Scroll Reveal) */
+    .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition: 0.8s all cubic-bezier(0.5, 0, 0, 1);
+    }
+    .reveal.active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Navbar Landing */
+    .landing-nav {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 20px 5%; background: rgba(9, 9, 11, 0.8);
+        backdrop-filter: blur(15px); position: sticky; top: 0; z-index: 1000;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .landing-logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; display:flex; align-items:center; gap:10px;}
+    .landing-logo span { background: linear-gradient(90deg, #66fcf1, #ff416c); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
+    .landing-nav-btn { padding: 10px 20px; border-radius: 20px; font-weight: 600; font-size: 14px; text-decoration: none; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); transition: 0.3s;}
+    .landing-nav-btn:hover { background: #fff; color: #000; }
+
+    /* Hero Section */
+    .hero { text-align: center; padding: 100px 20px 80px; max-width: 800px; margin: 0 auto; }
+    .hero-badge { display: inline-block; padding: 8px 16px; border-radius: 30px; background: rgba(255, 65, 108, 0.1); color: #ff416c; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; border: 1px solid rgba(255, 65, 108, 0.2); letter-spacing: 1px;}
+    .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; margin-bottom: 20px; letter-spacing: -2px;}
+    .hero h1 .gradient-text { background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 18px; color: #94a3b8; line-height: 1.6; margin-bottom: 40px; font-weight: 400;}
+    .hero-btns { display: flex; justify-content: center; gap: 15px; }
+    .hero-btn-primary { background: linear-gradient(135deg, #66fcf1, #3b82f6); color: #000; padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 16px; text-decoration: none; transition: 0.3s; box-shadow: 0 10px 25px rgba(102, 252, 241, 0.3); border:none;}
+    .hero-btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(102, 252, 241, 0.4); }
+    .hero-btn-secondary { background: transparent; color: #fff; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; text-decoration: none; border: 1px solid rgba(255,255,255,0.2); transition: 0.3s;}
+    .hero-btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.4);}
+
+    /* Stats Box */
+    .stats-container { display: flex; justify-content: center; gap: 20px; margin-top: 60px; flex-wrap: wrap; }
+    .stat-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 20px 40px; border-radius: 16px; backdrop-filter: blur(10px); }
+    .stat-val { font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 5px; }
+    .stat-label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Features Section */
+    .features { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+    .features-head { text-align: center; margin-bottom: 60px; }
+    .features-head h2 { font-size: 36px; font-weight: 900; margin-bottom: 15px; }
+    .features-head p { color: #94a3b8; font-size: 16px; }
+    
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
+    .feature-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; transition: 0.3s; }
+    .feature-card:hover { transform: translateY(-5px); border-color: rgba(102, 252, 241, 0.3); background: rgba(255,255,255,0.04);}
+    .f-icon { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+    .f-icon.pink { background: rgba(255, 65, 108, 0.1); color: #ff416c; }
+    .f-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .f-icon.green { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+    .f-icon.yellow { background: rgba(241, 196, 15, 0.1); color: #f1c40f; }
+    .feature-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #fff; }
+    .feature-card p { font-size: 14px; color: #94a3b8; line-height: 1.6; }
+
+    /* Footer */
+    .footer { text-align: center; padding: 40px 20px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 40px; color: #64748b; font-size: 13px; }
+    
+    @media (max-width: 600px) {
+        .hero h1 { font-size: 36px; }
+        .hero p { font-size: 15px; }
+        .hero-btns { flex-direction: column; }
+        .stat-box { flex: 1 1 100%; }
+    }
+</style>
+</head>
+<body>
+    <nav class="landing-nav">
+        <div class="landing-logo">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            <span>ZaTools</span>
+        </div>
+        <a href="/login" class="landing-nav-btn">Đăng nhập</a>
+    </nav>
+
+    <div class="hero reveal">
+        <div class="hero-badge">Hoạt động mượt mà 24/7</div>
+        <h1>Giữ Discord của bạn<br><span class="gradient-text">Luôn Online & Đẳng Cấp</span></h1>
+        <p>Lưu trữ nhiều tài khoản Discord trong Voice Channel, tự động kết nối lại khi rớt mạng, và thiết lập Custom Rich Presence tuỳ chỉnh - tất cả hoạt động 100% trên đám mây mà không cần treo máy tính.</p>
+        
+        <div class="hero-btns">
+            <a href="/register" class="hero-btn-primary">Bắt Đầu Miễn Phí</a>
+            <a href="#features" class="hero-btn-secondary">Cách hoạt động ↓</a>
+        </div>
+
+        <div class="stats-container reveal">
+            <div class="stat-box">
+                <div class="stat-val">99.9%</div>
+                <div class="stat-label">Uptime Hệ Thống</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val">24/7</div>
+                <div class="stat-label">Bất tử trong Voice</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val">Multi</div>
+                <div class="stat-label">Treo Nhiều Acc</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="features" class="features reveal">
+        <div class="features-head">
+            <h2 style="color:var(--accent); font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">CHÚNG TÔI CUNG CẤP GÌ</h2>
+            <h2 style="color:#fff;">Mọi Thứ Bạn Cần Để Trở Nên Khác Biệt</h2>
+        </div>
+        
+        <div class="feature-grid">
+            <div class="feature-card reveal">
+                <div class="f-icon pink"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg></div>
+                <h3>Treo Voice Vĩnh Cửu</h3>
+                <p>Khóa cứng tài khoản của bạn trong bất kỳ Voice Channel nào. Thuật toán tự động nối mạng sau 5 giây nếu có sự cố. Bạn bè luôn thấy bạn Đang Trực Tiếp.</p>
+            </div>
+            
+            <div class="feature-card reveal">
+                <div class="f-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></div>
+                <h3>Custom RPC Tối Thượng</h3>
+                <p>Tự do cài đặt Tên Game, Dòng chi tiết, Thời gian chơi và Gắn Nút bấm URL nhảy link. Tự động Proxy ảnh siêu mượt bằng chuẩn OP Code 2.</p>
+            </div>
+            
+            <div class="feature-card reveal">
+                <div class="f-icon green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                <h3>Bảo Mật Bằng Token</h3>
+                <p>Hệ thống không yêu cầu mật khẩu Discord của bạn. Mọi quá trình thao tác đều thông qua luồng WebSocket an toàn tuyệt đối 100%.</p>
+            </div>
+            
+            <div class="feature-card reveal">
+                <div class="f-icon yellow"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+                <h3>Live Log Cực Nhanh</h3>
+                <p>Theo dõi tiến trình kết nối theo thời gian thực (Real-time). Mọi hoạt động Cắm cờ, Văng mạng, Kích hoạt Cam/Stream đều hiển thị rõ ràng.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer reveal">
+        <p>&copy; 2026 ZaTools Premium. Not affiliated with Discord Inc.</p>
+        <p style="color: #2ecc71; margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:5px;"><span style="width:8px; height:8px; background:#2ecc71; border-radius:50%; display:inline-block; box-shadow: 0 0 10px #2ecc71;"></span> All systems operational</p>
+    </div>
+
+    <script>
+        // SCRIPT TẠO HIỆU ỨNG HIỂN THỊ RÕ DẦN KHI LƯỚT XUỐNG (SCROLL REVEAL)
+        function reveal() {
+            var reveals = document.querySelectorAll(".reveal");
+            for (var i = 0; i < reveals.length; i++) {
+                var windowHeight = window.innerHeight;
+                var elementTop = reveals[i].getBoundingClientRect().top;
+                var elementVisible = 50; // Điểm kích hoạt hiệu ứng
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add("active");
+                }
+            }
+        }
+        window.addEventListener("scroll", reveal);
+        reveal(); // Kích hoạt ngay lúc vừa load trang
+    </script>
+</body>
+</html>
+"""
+
 # ================== GIAO DIỆN AUTH ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
     body { display: flex; justify-content: center; align-items: center; position: relative;}
     .auth-container { max-width: 400px; width: 90%; padding: 35px 25px; margin: 15px;}
-    .logo { color: var(--text-main); font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 5px; transition: 0.3s;}
-    .logo span { color: var(--accent); }
+    .logo { color: var(--text-main); font-size: 32px; font-weight: 900; text-align: center; margin-bottom: 5px; transition: 0.3s; letter-spacing:-1px;}
+    .logo span { background: linear-gradient(90deg, #66fcf1, #ff416c); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
     .sub { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px; transition: 0.3s;}
     .divider { display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; margin: 20px 0; font-weight: 800; text-transform: uppercase; }
     .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--input-border); transition: 0.3s;}
@@ -196,8 +371,8 @@ HTML_AUTH = HTML_HEAD + """
 <body>
     <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg></button>
     <div class="card auth-container">
-        <div class="logo">Za <span>Tools</span></div>
-        <div class="sub">{% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}</div>
+        <div class="logo">Za<span>Tools</span></div>
+        <div class="sub">{% if mode == 'login' %}Đăng nhập hệ thống Cloud{% elif mode == 'register' %}Tạo tài khoản lưu trữ Cloud{% else %}Khôi phục mật khẩu{% endif %}</div>
         
         {% if error %}<div class="msg error"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
         {% if success %}<div class="msg success"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
@@ -243,8 +418,8 @@ HTML_MAIN = HTML_HEAD + """
     .navbar { background: var(--nav-bg); backdrop-filter: blur(10px); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 100;}
     .nav-left { display: flex; align-items: center; }
     .menu-btn { background: none; border: none; color: var(--text-main); padding: 5px; cursor: pointer; margin-right: 12px; }
-    .logo { color: var(--text-main); font-size: 20px; font-weight: 800; letter-spacing: -0.5px;}
-    .logo span { color: var(--accent); }
+    .logo { color: var(--text-main); font-size: 20px; font-weight: 900; letter-spacing: -1px;}
+    .logo span { background: linear-gradient(90deg, #66fcf1, #ff416c); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
     
     .sidebar { position: fixed; left: -260px; top: 0; width: 260px; height: 100%; background: var(--sidebar-bg); box-shadow: 2px 0 15px var(--shadow); transition: 0.3s; z-index: 1000; padding: 70px 20px 20px; border-right: 1px solid var(--border-light); display: flex; flex-direction: column; }
     .sidebar.active { left: 0; }
@@ -314,7 +489,7 @@ HTML_MAIN = HTML_HEAD + """
 <nav class="navbar">
     <div class="nav-left">
         <button class="menu-btn" onclick="toggleSidebar()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-        <div class="logo">Za <span>Tools</span></div>
+        <div class="logo">Za<span>Tools</span></div>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()">
         <svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg>
@@ -671,7 +846,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (CUSTOM RPC CORE TỐI THƯỢNG) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -683,7 +858,7 @@ def run_bot(bot_key, config, username):
     stream = str(config.get('stream', 'False')).lower() in ['true', 'on', '1']
 
     ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
-    start_time = int(time.time() * 1000) # ĐẾM GIỜ CHƠI TỪ LÚC CHẠY BOT
+    start_time = int(time.time() * 1000)
 
     if username not in user_bots: user_bots[username] = {}
     user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
@@ -743,7 +918,7 @@ def run_bot(bot_key, config, username):
             presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
             
             status_text = config.get('status_text', '').strip()
-            rpc_app_id = "1469298750613749934" # APP ID CỐ ĐỊNH, ĐÉO CẦN KHÁCH NHẬP
+            rpc_app_id = "1469298750613749934"
             
             if status_text:
                 activity = {
@@ -935,9 +1110,11 @@ def buy_plan():
 # ================== ROUTES ỨNG DỤNG CHÍNH ==================
 @app.route('/')
 def index():
-    if 'username' not in session: return redirect(url_for('login'))
+    if 'username' not in session:
+        # Nếu chưa đăng nhập, hiển thị TRANG MẶT TIỀN (LANDING PAGE)
+        return render_template_string(HTML_LANDING)
+        
     usr = session['username']
-    
     max_tokens, expiry_info, plan_name = get_user_limit(usr)
     db_user = users_collection.find_one({"username": usr})
     is_admin = db_user.get('is_admin', False) if db_user else False
