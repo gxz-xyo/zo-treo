@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_final_v17_light_dark"
+app.secret_key = "za_tools_final_v18_full_log"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE ==================
@@ -25,7 +25,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V17 - Tích hợp Light/Dark Mode.")
+    print("✅ MongoDB OK! Đã kích hoạt V18 - Phục hồi hệ thống LOG & Tự kết nối lại.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -81,57 +81,31 @@ HTML_HEAD = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script>
-        // KIỂM TRA THEME TỪ TRƯỚC KHI LOAD HTML ĐỂ TRÁNH NHÁY MÀN HÌNH MÀU ĐEN
         const savedTheme = localStorage.getItem('za_theme') || 'dark';
         if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         
-        /* ĐỊNH NGHĨA BIẾN MÀU CHO DARK MODE (MẶC ĐỊNH) */
         :root {
-            --bg-main: #07090f;
-            --text-main: #fff;
-            --text-muted: #85929e;
-            --accent: #66fcf1;
-            --accent-hover: rgba(102, 252, 241, 0.1);
-            --card-bg: rgba(21, 26, 33, 0.6);
-            --border-light: rgba(102, 252, 241, 0.1);
-            --input-bg: rgba(11, 12, 16, 0.8);
-            --input-border: rgba(47, 62, 70, 0.8);
-            --btn-bg: linear-gradient(135deg, #162447, #1f4068);
-            --nav-bg: rgba(11, 12, 16, 0.9);
-            --sidebar-bg: rgba(21, 26, 33, 0.98);
-            --account-card: rgba(11, 12, 16, 0.5);
-            --log-bg: rgba(0, 0, 0, 0.5);
-            --log-text: #4cdf8b;
-            --shadow: rgba(0,0,0,0.3);
-            --switch-bg: rgba(47, 62, 70, 0.8);
-            --success-text: #2ecc71;
-            --danger-text: #e74c3c;
+            --bg-main: #07090f; --text-main: #fff; --text-muted: #85929e; --accent: #66fcf1;
+            --accent-hover: rgba(102, 252, 241, 0.1); --card-bg: rgba(21, 26, 33, 0.6);
+            --border-light: rgba(102, 252, 241, 0.1); --input-bg: rgba(11, 12, 16, 0.8);
+            --input-border: rgba(47, 62, 70, 0.8); --btn-bg: linear-gradient(135deg, #162447, #1f4068);
+            --nav-bg: rgba(11, 12, 16, 0.9); --sidebar-bg: rgba(21, 26, 33, 0.98);
+            --account-card: rgba(11, 12, 16, 0.5); --log-bg: rgba(0, 0, 0, 0.5);
+            --log-text: #4cdf8b; --shadow: rgba(0,0,0,0.3); --switch-bg: rgba(47, 62, 70, 0.8);
+            --success-text: #2ecc71; --danger-text: #e74c3c;
         }
 
-        /* ĐỊNH NGHĨA BIẾN MÀU CHO LIGHT MODE */
         [data-theme="light"] {
-            --bg-main: #f0f2f5;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --accent: #0284c7;
-            --accent-hover: rgba(2, 132, 199, 0.1);
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --border-light: rgba(15, 23, 42, 0.1);
-            --input-bg: #ffffff;
-            --input-border: #cbd5e1;
-            --btn-bg: linear-gradient(135deg, #0284c7, #0369a1);
-            --nav-bg: rgba(255, 255, 255, 0.95);
-            --sidebar-bg: rgba(255, 255, 255, 0.98);
-            --account-card: #f8fafc;
-            --log-bg: #f1f5f9;
-            --log-text: #059669;
-            --shadow: rgba(0,0,0,0.08);
-            --switch-bg: #cbd5e1;
-            --success-text: #059669;
-            --danger-text: #dc2626;
+            --bg-main: #f0f2f5; --text-main: #1e293b; --text-muted: #64748b; --accent: #0284c7;
+            --accent-hover: rgba(2, 132, 199, 0.1); --card-bg: rgba(255, 255, 255, 0.9);
+            --border-light: rgba(15, 23, 42, 0.1); --input-bg: #ffffff; --input-border: #cbd5e1;
+            --btn-bg: linear-gradient(135deg, #0284c7, #0369a1); --nav-bg: rgba(255, 255, 255, 0.95);
+            --sidebar-bg: rgba(255, 255, 255, 0.98); --account-card: #f8fafc; --log-bg: #f1f5f9;
+            --log-text: #059669; --shadow: rgba(0,0,0,0.08); --switch-bg: #cbd5e1;
+            --success-text: #059669; --danger-text: #dc2626;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
@@ -286,7 +260,7 @@ HTML_MAIN = HTML_HEAD + """
     .account-card { background: var(--account-card); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid var(--input-border); display: flex; justify-content: space-between; align-items: center; }
     .account-card .name { font-weight: 700; color: var(--text-main); font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;}
     
-    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; }
+    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; white-space: pre-wrap; word-break: break-word;}
     
     .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; display: none; }
     .overlay.active { display: block; }
@@ -385,7 +359,7 @@ HTML_MAIN = HTML_HEAD + """
             <div class="account-card">
                 <div>
                     <div class="name"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--accent); width:16px; height:16px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ bot.get('display_name', 'Đang kết nối...') }}</div>
-                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px; display:flex; align-items:center; gap:4px;">Treo vĩnh cửu</div>
+                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px; display:flex; align-items:center; gap:4px;">{{ 'Treo vĩnh cửu' if bot.get('connected') else 'Đang thiết lập cổng...' }}</div>
                 </div>
                 <form method="POST" action="/stop"><input type="hidden" name="bot_key" value="{{ key }}"><button type="submit" class="btn btn-danger"><svg class="svg-icon" viewBox="0 0 24 24" style="margin:0;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button></form>
             </div>
@@ -488,7 +462,6 @@ HTML_MAIN = HTML_HEAD + """
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
     
-    // JS CHO NÚT CHUYỂN THEME
     function toggleTheme() {
         const root = document.documentElement;
         const isLight = root.getAttribute('data-theme') === 'light';
@@ -517,28 +490,107 @@ HTML_MAIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG ==================
+# ================== HÀM CHẠY LUỒNG & LOGGING ĐẦY ĐỦ ==================
 def run_bot(bot_key, config, username):
-    token, guild_id, channel_id = config['token'], config['guild_id'], config['channel_id']
-    mute, deaf = config.get('mute', True), config.get('deaf', True)
-    video, stream = config.get('video', False), config.get('stream', False)
+    token = config['token']
+    guild_id = config['guild_id']
+    channel_id = config['channel_id']
+    mute = config.get('mute', True)
+    deaf = config.get('deaf', True)
+    video = config.get('video', False)
+    stream = config.get('stream', False)
+
+    ws = None
+    last_seq = None
+    heartbeat_interval = 41250
+    connected = False
+
     if username not in user_bots: user_bots[username] = {}
-    user_bots[username][bot_key] = {'connected': False, 'log': ["🚀 Đang khởi động..."], 'running': True, 'display_name': 'Đang kết nối...'}
+    user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
+
+    def add_log(msg):
+        if username in user_bots and bot_key in user_bots[username]:
+            timestamp = time.strftime('%H:%M:%S')
+            user_bots[username][bot_key]['log'].append(f"[{timestamp}] {msg}")
+            if len(user_bots[username][bot_key]['log']) > 50:
+                user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
+
+    def update_status(st):
+        if username in user_bots and bot_key in user_bots[username]:
+            user_bots[username][bot_key]['connected'] = st
+
+    def send_voice_update(ws_client):
+        if not ws_client or not ws_client.keep_running: return
+        try:
+            ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
+        except: pass
+
+    def on_message(ws_client, message):
+        nonlocal last_seq, connected, heartbeat_interval
+        try: data = json.loads(message)
+        except: return
+        last_seq = data.get('s', last_seq)
+        op = data.get('op')
+        t = data.get('t')
+
+        if op == 10:
+            heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+            ws_client.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"}, "compress": False}}))
+            add_log("📤 Đã kết nối Gateway, đang tải dữ liệu...")
+        elif op == 0:
+            if t == 'READY':
+                d_name = data['d']['user']['username']
+                if username in user_bots and bot_key in user_bots[username]:
+                    user_bots[username][bot_key]['display_name'] = d_name
+                add_log(f"🎯 Đăng nhập thành công: {d_name}")
+                send_voice_update(ws_client)
+            elif t == 'VOICE_STATE_UPDATE':
+                d = data['d']
+                if d.get('channel_id') == channel_id and not connected:
+                    connected = True
+                    update_status(True)
+                    add_log("✅ Đã tham gia phòng thoại vĩnh cửu!")
+                elif d.get('channel_id') is None and connected:
+                    connected = False
+                    update_status(False)
+                    add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
+                    send_voice_update(ws_client)
+        elif op == 9: ws_client.close()
+
+    def on_close(ws_client, code, msg):
+        nonlocal connected
+        if connected: connected = False; update_status(False)
+        add_log("🔌 Mất kết nối! Tự động thử lại sau 5s...")
+        time.sleep(5)
+        if username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']: start_ws()
+
+    def on_error(ws_client, error):
+        if "Connection closed" not in str(error): add_log(f"💥 Lỗi: {error}")
+
+    def heartbeat_loop():
+        while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
+            time.sleep(heartbeat_interval)
+            if ws and ws.keep_running:
+                try: ws.send(json.dumps({"op": 1, "d": last_seq}))
+                except: pass
+
+    def keep_alive_loop():
+        while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
+            time.sleep(30)
+            if ws and ws.keep_running and connected: send_voice_update(ws)
 
     def start_ws():
-        try:
-            ws = websocket.WebSocketApp(requests.get("https://discord.com/api/v9/gateway").json()['url'] + "/?v=9&encoding=json",
-                on_message=lambda w, m: handle_msg(w, json.loads(m)))
-            def handle_msg(w, d):
-                if d.get('op') == 10: w.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux"}, "compress": False}}))
-                if d.get('t') == 'READY':
-                    user_bots[username][bot_key]['display_name'] = d['d']['user']['username']
-                    w.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
-                if d.get('t') == 'VOICE_STATE_UPDATE' and d['d'].get('channel_id') == channel_id:
-                    user_bots[username][bot_key]['connected'] = True
-            ws.run_forever()
-        except: pass
-    threading.Thread(target=start_ws, daemon=True).start()
+        nonlocal ws
+        if username not in user_bots or bot_key not in user_bots[username] or not user_bots[username][bot_key]['running']: return
+        try: gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
+        except: time.sleep(5); start_ws(); return
+        add_log("🚀 Khởi tạo tiến trình...")
+        ws = websocket.WebSocketApp(gateway + "/?v=9&encoding=json", on_message=on_message, on_error=on_error, on_close=on_close)
+        threading.Thread(target=heartbeat_loop, daemon=True).start()
+        threading.Thread(target=keep_alive_loop, daemon=True).start()
+        ws.run_forever()
+
+    start_ws()
 
 # ================== AUTO-BOOTLOADER ==================
 def auto_bootloader():
@@ -736,7 +788,6 @@ def admin_dashboard():
         <a href="/" style="color:var(--accent); text-decoration:none; font-weight:700; margin-top:10px; font-size: 14px;">← QUAY LẠI HỆ THỐNG</a>
         
         <script>
-            // Init theme for Admin page
             window.addEventListener('DOMContentLoaded', () => {{
                 const savedTheme = localStorage.getItem('za_theme') || 'dark';
                 if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
