@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_final_v22_ultimate"
+app.secret_key = "za_tools_final_v22_ultimate_live_logs"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE ==================
@@ -17,7 +17,7 @@ try:
     accounts_collection = db["accounts"]
     users_collection = db["users"]
     saved_profiles_collection = db["saved_profiles"]
-    transactions_collection = db["transactions"] # Bảng lưu giao dịch chống cộng đúp tiền
+    transactions_collection = db["transactions"]
     
     admin_user = "28012010"
     admin_pass = "itachi5867"
@@ -26,13 +26,12 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22 - Khôi phục Nút Login Discord.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.2 - Live Logs & Dynamic Theme Icons.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
 user_bots = {}
 
-# CẤU HÌNH API
 SEPAY_API_KEY = 'ZYIBFUMXFG6PJKXA0CNYCIQAKROTMD8Z3OQ5TDWVNX7E6DCDHXHGNOJM94FEWJ5Z'
 DISCORD_CLIENT_ID = '1504310281625403544'
 DISCORD_CLIENT_SECRET = 'FuZ0Xru4xBnE0UoxpmEEbby51ZB8D0RN'
@@ -82,7 +81,6 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== HÀM XỬ LÝ TIỀN CHỐNG TRÙNG LẶP ==================
 def process_sepay_transaction(tid, amount, raw_content):
     if transactions_collection.find_one({"_id": str(tid)}): return False
     
@@ -93,7 +91,6 @@ def process_sepay_transaction(tid, amount, raw_content):
             if "zatools" + normalized_db_username in normalized_content:
                 users_collection.update_one({"username": user['username']}, {"$inc": {"balance": amount}})
                 transactions_collection.insert_one({"_id": str(tid), "user": user['username'], "amount": amount, "time": time.time()})
-                print(f"💰 SePay: Đã nạp {amount} cho {user['username']} (Mã: {tid})")
                 return True
     return False
 
@@ -156,7 +153,41 @@ HTML_HEAD = """
     </style>
 """
 
-# ================== GIAO DIỆN ĐĂNG NHẬP (ĐÃ KHÔI PHỤC NÚT DISCORD) ==================
+# ================== SCRIPT UPDATE THEME ICON (CHUNG) ==================
+THEME_SCRIPT = """
+    <script>
+        const MOON_ICON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+        const SUN_ICON = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        
+        function setInitialThemeIcon() {
+            const root = document.documentElement;
+            const iconBtn = document.getElementById('theme-icon');
+            if(iconBtn) {
+                iconBtn.innerHTML = root.getAttribute('data-theme') === 'light' ? SUN_ICON : MOON_ICON;
+            }
+        }
+        
+        function toggleTheme() {
+            const root = document.documentElement;
+            const isLight = root.getAttribute('data-theme') === 'light';
+            const iconBtn = document.getElementById('theme-icon');
+            
+            if (isLight) { 
+                root.removeAttribute('data-theme'); 
+                localStorage.setItem('za_theme', 'dark'); 
+                if(iconBtn) iconBtn.innerHTML = MOON_ICON;
+            } else { 
+                root.setAttribute('data-theme', 'light'); 
+                localStorage.setItem('za_theme', 'light'); 
+                if(iconBtn) iconBtn.innerHTML = SUN_ICON;
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", setInitialThemeIcon);
+    </script>
+"""
+
+# ================== GIAO DIỆN AUTH ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
@@ -178,7 +209,7 @@ HTML_AUTH = HTML_HEAD + """
 </style>
 </head>
 <body>
-    <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
+    <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg></button>
     <div class="card auth-container">
         <div class="logo">Za <span>Tools</span></div>
         <div class="sub">
@@ -225,14 +256,7 @@ HTML_AUTH = HTML_HEAD + """
         <div class="switch-link"><a href="/login">← Quay lại đăng nhập</a></div>
         {% endif %}
     </div>
-    <script>
-        function toggleTheme() {
-            const root = document.documentElement;
-            const isLight = root.getAttribute('data-theme') === 'light';
-            if (isLight) { root.removeAttribute('data-theme'); localStorage.setItem('za_theme', 'dark'); } 
-            else { root.setAttribute('data-theme', 'light'); localStorage.setItem('za_theme', 'light'); }
-        }
-    </script>
+    """ + THEME_SCRIPT + """
 </body>
 </html>
 """
@@ -270,7 +294,7 @@ HTML_MAIN = HTML_HEAD + """
     
     .account-card { background: var(--account-card); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid var(--input-border); display: flex; justify-content: space-between; align-items: center; }
     .account-card .name { font-weight: 700; color: var(--text-main); font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;}
-    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; white-space: pre-wrap; word-break: break-word;}
+    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; white-space: pre-wrap; word-break: break-word;}
     .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; display: none; }
     .overlay.active { display: block; }
     .limit-badge { background: var(--accent-hover); color: var(--accent); padding: 10px 15px; border-radius: 10px; font-size: 12px; border: 1px solid var(--border-light); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-weight: 600;}
@@ -299,6 +323,15 @@ HTML_MAIN = HTML_HEAD + """
         .account-card form { flex: 1; display:flex; }
         .account-card .btn { width: 100%; justify-content: center;}
     }
+    
+    .switch-wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--account-card); border-radius: 12px; border: 1px solid var(--input-border); }
+    .switch-label { display: flex; align-items: center; gap: 8px; color: var(--text-main); font-size: 13px; font-weight: 600; }
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink:0;}
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--switch-bg); transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #fff; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
 </style>
 </head>
 <body>
@@ -309,7 +342,7 @@ HTML_MAIN = HTML_HEAD + """
         <div class="logo">Za <span>Tools</span></div>
     </div>
     <button class="theme-toggle-btn" onclick="toggleTheme()">
-        <svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg>
     </button>
 </nav>
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
@@ -373,17 +406,20 @@ HTML_MAIN = HTML_HEAD + """
             <div class="account-card">
                 <div>
                     <div class="name"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--accent); width:16px; height:16px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ bot.get('display_name', 'Đang kết nối...') }}</div>
-                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px;">Treo vĩnh cửu</div>
+                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px;" id="status-{{ loop.index0 }}">Đang kết nối...</div>
                 </div>
                 <form method="POST" action="/stop"><input type="hidden" name="bot_key" value="{{ key }}"><button type="submit" class="btn btn-danger"><svg class="svg-icon" viewBox="0 0 24 24" style="margin:0;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button></form>
             </div>
             {% endfor %}
             {% if not bot_items %}<div style="font-size:12px; color:var(--text-muted); text-align:center; padding: 10px 0;">Trống.</div>{% endif %}
         </div>
+        
         <div class="card">
-            <div class="card-title"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Nhật Ký</div>
-            <div class="log-box">{{ log|join('\\n') if log else 'Đang chờ hệ thống...' }}</div>
-            <form method="POST" action="/refresh"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary" style="width:100%;"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> CẬP NHẬT TRẠNG THÁI</button></form>
+            <div class="card-title" style="justify-content: space-between;">
+                <span style="display:flex; align-items:center; gap:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Nhật Ký (Live)</span>
+                <form method="POST" action="/refresh" style="margin:0;"><input type="hidden" name="tab" value="treo"><button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 10px;"><svg class="svg-icon" viewBox="0 0 24 24" style="width:12px; height:12px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> LÀM MỚI</button></form>
+            </div>
+            <div class="log-box" id="live-log-box">Đang chờ hệ thống...</div>
         </div>
     </div>
 
@@ -465,6 +501,7 @@ HTML_MAIN = HTML_HEAD + """
     </div>
 </div>
 
+""" + THEME_SCRIPT + """
 <script>
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
     function switchTab(tabId, el) {
@@ -492,7 +529,45 @@ HTML_MAIN = HTML_HEAD + """
         let links = document.querySelectorAll('.nav-link');
         let targetLink = Array.from(links).find(l => l.getAttribute('onclick').includes(tabToLoad));
         if(targetLink) switchTab(tabToLoad, targetLink);
+        
+        // Kích hoạt Live Log
+        fetchLiveLogs();
+        setInterval(fetchLiveLogs, 3000);
     };
+    
+    // ================== HỆ THỐNG LIVE LOGS BẰNG AJAX ==================
+    function fetchLiveLogs() {
+        if(document.getElementById('tab-treo').classList.contains('active')) {
+            fetch('/api/get_logs')
+            .then(res => res.json())
+            .then(data => {
+                const logBox = document.getElementById('live-log-box');
+                if (data.log.length > 0) {
+                    let newLogContent = data.log.join('\\n');
+                    if (logBox.innerHTML !== newLogContent) {
+                        logBox.innerHTML = newLogContent;
+                        logBox.scrollTop = logBox.scrollHeight; // Tự cuộn xuống dưới
+                    }
+                } else {
+                    logBox.innerHTML = 'Đang chờ hệ thống...';
+                }
+                
+                // Cập nhật trạng thái từng bot (Vĩnh cửu / Mất mạng)
+                data.status.forEach((st, index) => {
+                    let statusEl = document.getElementById('status-' + index);
+                    if (statusEl) {
+                        if(st.connected) {
+                            statusEl.innerHTML = "Treo vĩnh cửu";
+                            statusEl.style.color = "var(--success-text)";
+                        } else {
+                            statusEl.innerHTML = "Mất kết nối / Đang xử lý...";
+                            statusEl.style.color = "var(--danger-text)";
+                        }
+                    }
+                });
+            });
+        }
+    }
     
     let checkPaymentInterval;
     let currentBalance = {{ balance }};
@@ -543,14 +618,6 @@ HTML_MAIN = HTML_HEAD + """
             }
         });
     }
-    
-    function toggleTheme() {
-        const root = document.documentElement;
-        const isLight = root.getAttribute('data-theme') === 'light';
-        if (isLight) { root.removeAttribute('data-theme'); localStorage.setItem('za_theme', 'dark'); } 
-        else { root.setAttribute('data-theme', 'light'); localStorage.setItem('za_theme', 'light'); }
-    }
-    setInterval(() => { fetch('/ping'); }, 15000);
 </script>
 </body>
 </html>
@@ -566,7 +633,7 @@ HTML_ADMIN = HTML_HEAD + """
     .action-box { background: rgba(102, 252, 241, 0.05); border: 1px solid var(--accent); padding: 20px; border-radius: 15px; margin-top: 25px;}
 </style>
 <body>
-    <button class="theme-toggle-btn" onclick="toggleTheme()" style="position: absolute; top:20px; right:20px;"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
+    <button class="theme-toggle-btn" onclick="toggleTheme()" style="position: absolute; top:20px; right:20px;"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg></button>
     
     <div class="admin-container">
         <h2 style="color:var(--text-main); text-align:center; margin-bottom:25px; display:flex; justify-content:center; align-items:center; gap:10px;">
@@ -601,18 +668,12 @@ HTML_ADMIN = HTML_HEAD + """
         
         <div style="text-align:center; margin-top:20px;"><a href="/" style="color:var(--text-muted); text-decoration:none; font-weight:600;">← Trở về trang chủ</a></div>
     </div>
-    <script>
-        function toggleTheme() {
-            const root = document.documentElement;
-            if (root.getAttribute('data-theme') === 'light') { root.removeAttribute('data-theme'); localStorage.setItem('za_theme', 'dark'); } 
-            else { root.setAttribute('data-theme', 'light'); localStorage.setItem('za_theme', 'light'); }
-        }
-    </script>
+    """ + THEME_SCRIPT + """
 </body>
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX AUTO-RECONNECT) ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING ==================
 def run_bot(bot_key, config, username):
     token = config['token']
     guild_id = config['guild_id']
@@ -736,6 +797,25 @@ def api_get_balance():
     if 'username' not in session: return jsonify({"balance": 0})
     user = users_collection.find_one({"username": session['username']})
     return jsonify({"balance": user.get('balance', 0) if user else 0})
+
+# TÍNH NĂNG MỚI: TRẢ API LIVE LOG CHO CLIENT
+@app.route('/api/get_logs')
+def api_get_logs():
+    if 'username' not in session: return jsonify({"log": [], "status": []})
+    usr = session['username']
+    
+    if usr not in user_bots or not user_bots[usr]:
+        return jsonify({"log": [], "status": []})
+    
+    # Gom log của luồng đầu tiên (hoặc tất cả)
+    active_bots = [(k, v) for k, v in user_bots[usr].items() if v.get('running', False)]
+    if not active_bots:
+        return jsonify({"log": [], "status": []})
+        
+    log_data = active_bots[0][1].get('log', [])
+    status_data = [{"bot_key": k, "connected": v.get('connected', False)} for k, v in active_bots]
+    
+    return jsonify({"log": log_data, "status": status_data})
 
 # ================== API MUA GÓI BẰNG COIN ==================
 @app.route('/buy_plan', methods=['POST'])
