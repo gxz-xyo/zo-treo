@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 from flask_wtf.csrf import CSRFProtect
+from datetime import timedelta
 import threading, json, time, requests, websocket, os, logging
 from pymongo import MongoClient
 from requests_oauthlib import OAuth2Session
@@ -10,9 +11,9 @@ from bson.objectid import ObjectId
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
-# LẤY KEY TỪ BIẾN MÔI TRƯỜNG, NẾU KHÔNG CÓ THÌ DÙNG MẶC ĐỊNH (Cảnh báo)
+# LẤY KEY TỪ BIẾN MÔI TRƯỜNG, ĐÃ FIX LỖI 500 VỚI TIMEDELTA
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "za_tools_fallback_dev_key")
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 7  # Session tồn tại 7 ngày
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 csrf = CSRFProtect(app)
 
 # Tắt Insecure Transport trên Production
@@ -36,23 +37,22 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    logging.info("✅ MongoDB OK! Đã kích hoạt V23 - Enterprise Security.")
+    logging.info("✅ MongoDB OK! Đã kích hoạt V23.1 - Đã Fix Lỗi Login.")
 except Exception as e:
     logging.error(f"💥 Lỗi DB: {e}")
 
 user_bots = {}
-bots_lock = threading.Lock() # KHOÁ THREAD ĐỂ QUẢN LÝ USER_BOTS AN TOÀN
+bots_lock = threading.Lock()
 
 SEPAY_API_KEY = os.getenv("SEPAY_API_KEY", "ZYIBFUMXFG6PJKXA0CNYCIQAKROTMD8Z3OQ5TDWVNX7E6DCDHXHGNOJM94FEWJ5Z")
 DISCORD_CLIENT_ID = '1504310281625403544'
 DISCORD_CLIENT_SECRET = 'FuZ0Xru4xBnE0UoxpmEEbby51ZB8D0RN'
 DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize'
 DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token'
-ANTI_CAPTCHA_API_KEY = '72cd105f15332c81afa5855ac4ce7d86'
 
 def get_base_url(): return "https://zo-treo.onrender.com"
 
-# ================== HÀM TIỆN ÍCH (UTILS) ==================
+# ================== HÀM TIỆN ÍCH ==================
 def get_user_limit(username):
     user = users_collection.find_one({"username": username})
     if not user: return 1, "Gói Free", "Free", ""
@@ -71,7 +71,7 @@ def get_user_limit(username):
             users_collection.update_one({"username": username}, {"$set": {"max_tokens": 1, "expiry_date": 0}})
             return 1, "Đã hết hạn", "Free", "var(--danger-text)"
         else:
-            color = "var(--danger-text)" if time_left < 3 * 86400 else "var(--success-text)" # Đỏ nếu < 3 ngày
+            color = "var(--danger-text)" if time_left < 3 * 86400 else "var(--success-text)"
             days_str = f" (Còn {int(time_left // 86400)} ngày)"
             return current_limit, time.strftime('%d/%m/%Y', time.localtime(expiry_ts)) + days_str, plan_name, color
     return 1, "Gói Free", "Free", ""
@@ -95,7 +95,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== CẤU TRÚC HTML & CSS ==================
+# ================== HTML & CSS CHUNG ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -147,9 +147,10 @@ HTML_HEAD = """
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.success { background: rgba(46, 204, 113, 0.1); color: var(--success-text); border: 1px solid rgba(46, 204, 113, 0.2); }
         .msg.error { background: rgba(231, 76, 60, 0.1); color: var(--danger-text); border: 1px solid rgba(231, 76, 60, 0.2); }
+        .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         .theme-toggle-btn { background: var(--account-card); border: 1px solid var(--input-border); color: var(--text-main); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink:0;}
+        .theme-toggle-btn:hover { background: var(--accent-hover); color: var(--accent); }
         
-        /* Hiệu ứng Loading */
         #global-loader { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:var(--accent); font-weight:800; font-size:14px; letter-spacing:1px; backdrop-filter:blur(5px);}
         .spinner { width: 50px; height: 50px; border: 4px solid rgba(102, 252, 241, 0.2); border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -157,6 +158,7 @@ HTML_HEAD = """
     </style>
 """
 
+# ================== GIAO DIỆN AUTH ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
@@ -175,10 +177,12 @@ HTML_AUTH = HTML_HEAD + """
     <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
     <div class="card auth-container">
         <div class="logo">Za <span>Tools</span></div>
-        <div class="sub">{% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}</div>
+        <div class="sub">
+            {% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}
+        </div>
         
-        {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
-        {% if success %}<div class="msg success">{{ success }}</div>{% endif %}
+        {% if error %}<div class="msg error"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
+        {% if success %}<div class="msg success"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
 
         <form method="POST" action="{{ '/' + mode }}" onsubmit="showLoader()">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -218,6 +222,7 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
+# ================== GIAO DIỆN DASHBOARD CHÍNH ==================
 HTML_MAIN = HTML_HEAD + """
 <title>Za Tools - Premium Dashboard</title>
 <style>
@@ -259,6 +264,12 @@ HTML_MAIN = HTML_HEAD + """
     .tab-btn.active { background: var(--btn-bg); color: #fff; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     .pulsing { animation: pulse 1.5s infinite; }
+    @media (max-width: 600px) {
+        .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
+        .account-card form { flex: 1; display:flex; }
+        .account-card .btn { width: 100%; justify-content: center;}
+    }
 </style>
 </head>
 <body>
@@ -625,11 +636,11 @@ def auto_bootloader():
             if current_running >= limit: continue 
             config = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
             threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
-            time.sleep(0.5) # Chống tạo luồng dồn dập
+            time.sleep(0.5)
     except: pass
 threading.Thread(target=auto_bootloader, daemon=True).start()
 
-# ================== SEPAY WEBHOOK (BỎ CSRF) ==================
+# ================== SEPAY WEBHOOK ==================
 @app.route('/sepay_webhook', methods=['POST'])
 @csrf.exempt
 def sepay_webhook():
