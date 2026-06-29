@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_final_v20_wallet_system"
+app.secret_key = "za_tools_final_v21_live_tracker"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE ==================
@@ -25,7 +25,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V20 - Hệ thống Ví Coin & Cửa hàng Premium.")
+    print("✅ MongoDB OK! Đã kích hoạt V21 - Live Payment Tracker.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -132,6 +132,7 @@ HTML_HEAD = """
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.success { background: rgba(46, 204, 113, 0.1); color: var(--success-text); border: 1px solid rgba(46, 204, 113, 0.2); }
         .msg.error { background: rgba(231, 76, 60, 0.1); color: var(--danger-text); border: 1px solid rgba(231, 76, 60, 0.2); }
+        .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         
         .switch-wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--account-card); border-radius: 12px; border: 1px solid var(--input-border); }
         .switch-label { display: flex; align-items: center; gap: 8px; color: var(--text-main); font-size: 13px; font-weight: 600; }
@@ -258,6 +259,9 @@ HTML_MAIN = HTML_HEAD + """
     .tab-btn { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: 0.3s;}
     .tab-btn.active { background: var(--btn-bg); color: #fff; }
     
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    .pulsing { animation: pulse 1.5s infinite; }
+    
     @media (max-width: 600px) {
         .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
         .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
@@ -284,7 +288,7 @@ HTML_MAIN = HTML_HEAD + """
     <button class="close-btn" onclick="toggleSidebar()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     <div class="user-tag">
         @{{ current_user }}
-        <div class="wallet-balance"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> {{ "{:,}".format(balance) }} </div>
+        <div class="wallet-balance" id="wallet-display-sidebar"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> {{ "{:,}".format(balance) }} </div>
         <div class="expiry">Hạn gói: {{ expiry_info }}</div>
     </div>
     
@@ -383,7 +387,7 @@ HTML_MAIN = HTML_HEAD + """
         <!-- Khu vực nạp tiền -->
         <div id="sub-nap" class="card">
             <div class="card-title" style="color: var(--coin-color);"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> NẠP SỐ DƯ (1 VNĐ = 1 COIN)</div>
-            <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:15px;">Quét QR chuyển khoản với nội dung yêu cầu. Tiền sẽ vào ví tự động sau 5s.</p>
+            <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:15px;">Dùng mã QR bên dưới để nạp. Hệ thống kiểm tra và cộng số dư tự động.</p>
             
             <div class="input-group">
                 <input type="number" id="nap_amount" placeholder="Nhập số tiền muốn nạp..." min="10000" step="10000">
@@ -393,8 +397,14 @@ HTML_MAIN = HTML_HEAD + """
             <div id="qr_nap_area" style="display: none; text-align: center; border-top: 1px dashed var(--input-border); padding-top: 20px;">
                 <img id="qr_nap_img" src="" style="width: 220px; max-width: 100%; border-radius: 12px; border: 2px solid var(--coin-color);">
                 <div style="margin-top: 15px; font-size: 13px; background: var(--input-bg); padding: 12px; border-radius: 10px;">
-                    <span style="color:var(--text-muted);">Nội dung nạp tiền:</span><br>
+                    <span style="color:var(--text-muted);">Nội dung chuyển khoản tự động:</span><br>
                     <b style="color:var(--success-text); font-size: 16px; letter-spacing: 1px;">ZATOOLS {{ current_user }}</b>
+                </div>
+                
+                <!-- BỘ THEO DÕI THANH TOÁN (LIVE TRACKER) -->
+                <div id="payment_status" class="msg pulsing" style="display:none; margin-top:15px; background:rgba(241, 196, 15, 0.1); color:var(--coin-color); border:1px solid rgba(241, 196, 15, 0.3);">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Đang chờ hệ thống ngân hàng xử lý...
                 </div>
             </div>
         </div>
@@ -462,28 +472,65 @@ HTML_MAIN = HTML_HEAD + """
         if(targetLink) switchTab(tabToLoad, targetLink);
     };
     
+    let checkPaymentInterval;
+    let currentBalance = {{ balance }};
+
     function generateNapQR() {
         let amount = document.getElementById('nap_amount').value;
         if (!amount || amount < 10000) { alert('Vui lòng nạp tối thiểu 10.000 VNĐ'); return; }
-        let user = '{{ current_user }}';
-        let addInfo = encodeURIComponent('ZATOOLS ' + user);
+        
+        // Loại bỏ dấu gạch dưới trên QR để khách nhìn không sợ bị lỗi
+        let rawUser = '{{ current_user }}';
+        let cleanUser = rawUser.replace(/_/g, "");
+        let addInfo = encodeURIComponent('ZATOOLS ' + cleanUser);
         let url = `https://img.vietqr.io/image/MB-1628012010-compact2.png?amount=${amount}&addInfo=${addInfo}&accountName=Phan%20Tran%20Dang%20Khoi`;
+        
         document.getElementById('qr_nap_img').src = url;
         document.getElementById('qr_nap_area').style.display = 'block';
+        
+        // Bật hộp thông báo Live Tracker
+        let statusDiv = document.getElementById('payment_status');
+        statusDiv.style.display = 'flex';
+        statusDiv.className = 'msg pulsing';
+        statusDiv.style.background = 'rgba(241, 196, 15, 0.1)';
+        statusDiv.style.color = 'var(--coin-color)';
+        statusDiv.style.borderColor = 'rgba(241, 196, 15, 0.3)';
+        statusDiv.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Đang chờ ngân hàng xử lý...';
+
+        // Bắt đầu gọi API liên tục kiểm tra tiền
+        if(checkPaymentInterval) clearInterval(checkPaymentInterval);
+        checkPaymentInterval = setInterval(checkBalance, 3000);
+    }
+    
+    function checkBalance() {
+        fetch('/api/get_balance')
+        .then(res => res.json())
+        .then(data => {
+            if (data.balance > currentBalance) {
+                clearInterval(checkPaymentInterval);
+                let diff = data.balance - currentBalance;
+                currentBalance = data.balance;
+                
+                // Cập nhật giao diện thành công
+                let statusDiv = document.getElementById('payment_status');
+                statusDiv.className = 'msg';
+                statusDiv.style.background = 'rgba(46, 204, 113, 0.1)';
+                statusDiv.style.color = 'var(--success-text)';
+                statusDiv.style.borderColor = 'rgba(46, 204, 113, 0.3)';
+                statusDiv.innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Nạp thành công +${diff.toLocaleString('vi-VN')} Coin!`;
+                
+                // Tự động nhảy số dư Ví mà không cần F5
+                document.getElementById('wallet-display-sidebar').innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> ${currentBalance.toLocaleString('vi-VN')}`;
+            }
+        });
     }
     
     function toggleTheme() {
         const root = document.documentElement;
         const isLight = root.getAttribute('data-theme') === 'light';
-        if (isLight) {
-            root.removeAttribute('data-theme');
-            localStorage.setItem('za_theme', 'dark');
-        } else {
-            root.setAttribute('data-theme', 'light');
-            localStorage.setItem('za_theme', 'light');
-        }
+        if (isLight) { root.removeAttribute('data-theme'); localStorage.setItem('za_theme', 'dark'); } 
+        else { root.setAttribute('data-theme', 'light'); localStorage.setItem('za_theme', 'light'); }
     }
-    setInterval(() => { fetch('/ping'); }, 15000);
 </script>
 </body>
 </html>
@@ -615,6 +662,13 @@ def sepay_webhook():
                     break
         return jsonify({"success": True})
     except Exception as e: return jsonify({"error": str(e)}), 500
+
+# ================== API TRA CỨU SỐ DƯ (LIVE TRACKER) ==================
+@app.route('/api/get_balance')
+def api_get_balance():
+    if 'username' not in session: return jsonify({"balance": 0})
+    user = users_collection.find_one({"username": session['username']})
+    return jsonify({"balance": user.get('balance', 0) if user else 0})
 
 # ================== API MUA GÓI BẰNG COIN ==================
 @app.route('/buy_plan', methods=['POST'])
@@ -793,6 +847,13 @@ def admin_dashboard():
             <div style="font-size: 14px; display:flex; justify-content:space-between; color:var(--text-muted); font-weight:600;">⚡ Luồng đang cày: <b style='color:var(--success-text); font-size:18px;'>{active_running}</b></div>
         </div>
         <a href="/" style="color:var(--accent); text-decoration:none; font-weight:700; margin-top:10px; font-size: 14px;">← QUAY LẠI HỆ THỐNG</a>
+        
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {{
+                const savedTheme = localStorage.getItem('za_theme') || 'dark';
+                if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            }});
+        </script>
     </body>
     </html>
     """
