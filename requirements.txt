@@ -5,3 +5,4 @@ pymongo
 dnspython
 Werkzeug
 requests-oauthlib
+Flask-WTF==1.2.1
