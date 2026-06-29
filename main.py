@@ -249,103 +249,6 @@ HTML_HEAD = """
         .msg.success { background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.25); color: var(--success-text); }
         .msg.error { background: rgba(255, 68, 88, 0.1); border: 1px solid rgba(255, 68, 88, 0.25); color: var(--danger-text); }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* ============ FAQ ============ */
-        .faq-section { max-width: 800px; margin: 0 auto; padding: 60px 20px; }
-        .faq-head { text-align: center; margin-bottom: 40px; }
-        .faq-eyebrow { color: var(--accent); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
-        .faq-head h2 { font-size: 32px; font-weight: 900; margin-top: 6px; }
-        .faq-list { display: flex; flex-direction: column; gap: 12px; }
-        .faq-item {
-            background: var(--card-bg);
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            overflow: hidden;
-            transition: 0.3s;
-        }
-        .faq-item:hover { border-color: var(--border-hover); }
-        .faq-question {
-            padding: 18px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--text-main);
-            user-select: none;
-        }
-        .faq-question .faq-icon {
-            font-size: 22px;
-            color: var(--accent);
-            transition: 0.3s;
-            line-height: 1;
-        }
-        .faq-question.active .faq-icon { transform: rotate(45deg); }
-        .faq-answer {
-            padding: 0 20px 20px;
-            color: var(--text-muted);
-            font-size: 14px;
-            line-height: 1.7;
-            display: none;
-        }
-        .faq-answer.open { display: block; }
-
-        /* ============ ABOUT & CONTACT ============ */
-        .about-section { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
-        .about-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        .about-bio, .contact-info {
-            background: var(--card-bg);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            padding: 28px;
-            backdrop-filter: blur(12px);
-        }
-        .about-bio h3, .contact-info h3 {
-            font-size: 18px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            color: var(--text-main);
-        }
-        .about-bio p {
-            font-size: 14px;
-            line-height: 1.8;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-        .about-bio .social-links {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-top: 16px;
-        }
-        .about-bio .social-links a {
-            background: var(--accent-hover);
-            padding: 6px 16px;
-            border-radius: 20px;
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 13px;
-            transition: 0.3s;
-            border: 1px solid transparent;
-        }
-        .about-bio .social-links a:hover {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-        }
-        .contact-info p {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
-        .contact-info strong { color: var(--text-main); }
-        .contact-info .highlight { color: var(--accent); font-weight: 700; }
-
-        @media (max-width: 600px) {
-            .about-container { grid-template-columns: 1fr; }
-        }
     </style>
 """
 
@@ -374,6 +277,7 @@ THEME_SCRIPT = """
     </script>
 """
 
+# Telegram float button HTML (dùng lại ở nhiều trang)
 TG_FLOAT_BTN = """
 <a href="https://t.me/thiendangcuaanh" target="_blank" class="tg-float" title="Liên hệ Telegram">
     <span class="tg-tooltip">Liên hệ hỗ trợ</span>
@@ -383,10 +287,11 @@ TG_FLOAT_BTN = """
 </a>
 """
 
-# ================== LANDING PAGE (ĐÃ THÊM FAQ & ABOUT) ==================
+# ================== LANDING PAGE (MỚI - CÓ FAQ, AUTHOR, CONTACT) ==================
 HTML_LANDING = HTML_HEAD + """
 <title>ZaTools - Nền Tảng Giữ Discord Luôn Online</title>
 <style>
+    /* ====== Các style cũ của landing ====== */
     .reveal { opacity: 0; transform: translateY(40px); transition: 0.8s all cubic-bezier(0.5, 0, 0, 1); }
     .reveal.active { opacity: 1; transform: translateY(0); }
 
@@ -451,6 +356,7 @@ HTML_LANDING = HTML_HEAD + """
     .stat-val { font-size: 30px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
     .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
 
+    /* ====== FEATURES ====== */
     .features { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
     .features-eyebrow { text-align: center; color: var(--accent); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 14px; }
     .features-head h2 { font-size: 36px; font-weight: 900; margin-bottom: 14px; color: var(--text-main); text-align: center; }
@@ -463,7 +369,8 @@ HTML_LANDING = HTML_HEAD + """
         position: relative; overflow: hidden;
     }
     .feature-card::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
         background: linear-gradient(90deg, transparent, var(--f-color), transparent);
         opacity: 0; transition: 0.3s;
     }
@@ -479,6 +386,84 @@ HTML_LANDING = HTML_HEAD + """
     .feature-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--text-main); }
     .feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
 
+    /* ====== FAQ MỚI ====== */
+    .faq-section {
+        max-width: 820px; margin: 60px auto; padding: 0 20px;
+    }
+    .faq-section .faq-title {
+        text-align: center; font-size: 32px; font-weight: 900; margin-bottom: 10px;
+        color: var(--text-main);
+    }
+    .faq-section .faq-sub {
+        text-align: center; color: var(--text-muted); margin-bottom: 40px;
+    }
+    .faq-item {
+        background: var(--card-bg); border: 1px solid var(--border-light);
+        border-radius: 16px; margin-bottom: 12px; overflow: hidden;
+        transition: 0.3s; cursor: pointer;
+    }
+    .faq-item:hover { border-color: var(--border-hover); }
+    .faq-question {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 20px; font-weight: 700; font-size: 15px;
+        color: var(--text-main); user-select: none;
+    }
+    .faq-question .arrow {
+        transition: transform 0.3s; color: var(--accent);
+        font-size: 20px; line-height: 1;
+    }
+    .faq-item.open .faq-question .arrow { transform: rotate(180deg); }
+    .faq-answer {
+        max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease;
+        padding: 0 20px; color: var(--text-muted); font-size: 14px; line-height: 1.6;
+    }
+    .faq-item.open .faq-answer {
+        max-height: 300px; padding: 0 20px 20px 20px;
+    }
+
+    /* ====== AUTHOR & CONTACT ====== */
+    .author-section {
+        max-width: 820px; margin: 80px auto 40px; padding: 0 20px;
+        display: flex; flex-wrap: wrap; gap: 30px;
+        background: var(--card-bg); border: 1px solid var(--border-light);
+        border-radius: 28px; padding: 36px 30px;
+        backdrop-filter: blur(12px);
+    }
+    .author-left { flex: 1 1 200px; text-align: center; }
+    .author-left img { width: 100%; max-width: 220px; border-radius: 20px; border: 2px solid var(--accent); box-shadow: var(--glow-accent); }
+    .author-right { flex: 2 1 300px; }
+    .author-name {
+        font-size: 28px; font-weight: 900; color: var(--text-main);
+        margin-bottom: 6px;
+    }
+    .author-role {
+        font-size: 14px; color: var(--text-muted); margin-bottom: 18px;
+    }
+    .author-social {
+        display: flex; gap: 18px; flex-wrap: wrap; margin: 16px 0 20px;
+    }
+    .social-link {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,0.04); padding: 8px 16px;
+        border-radius: 30px; border: 1px solid var(--border-light);
+        text-decoration: none; color: var(--text-main); font-weight: 600;
+        transition: 0.3s; font-size: 13px;
+    }
+    .social-link:hover { border-color: var(--accent); background: var(--accent-hover); color: var(--accent); }
+    .social-link.discord { border-color: #5865F2; }
+    .social-link.discord:hover { background: rgba(88,101,242,0.12); color: #5865F2; border-color: #5865F2; }
+    .social-link.telegram { border-color: #0088cc; }
+    .social-link.telegram:hover { background: rgba(0,136,204,0.12); color: #0088cc; border-color: #0088cc; }
+    .social-link svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+
+    .contact-info {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;
+        margin-top: 10px; font-size: 13px; color: var(--text-muted);
+    }
+    .contact-info .label { font-weight: 700; color: var(--text-main); }
+    .contact-info a { color: var(--accent); text-decoration: none; }
+    .contact-info a:hover { text-decoration: underline; }
+
     .footer { text-align: center; padding: 40px 20px; border-top: 1px solid var(--border-light); margin-top: 40px; color: var(--text-muted); font-size: 13px; }
 
     @media (max-width: 600px) {
@@ -486,6 +471,9 @@ HTML_LANDING = HTML_HEAD + """
         .hero p { font-size: 14px; }
         .hero-btns { flex-direction: column; align-items: center; }
         .stat-box { flex: 1 1 45%; min-width: 140px; padding: 16px 20px; }
+        .author-section { flex-direction: column; align-items: center; text-align: center; }
+        .contact-info { grid-template-columns: 1fr; }
+        .author-social { justify-content: center; }
     }
 </style>
 </head>
@@ -506,6 +494,7 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </nav>
 
+<!-- HERO -->
 <div class="hero reveal">
     <div class="hero-badge"><span class="hero-badge-dot"></span> Hoạt động mượt mà 24/7</div>
     <h1>Giữ Discord của bạn<br><span class="gradient-text">Luôn Online & Đẳng Cấp</span></h1>
@@ -525,6 +514,7 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
+<!-- FEATURES -->
 <div id="features" class="features reveal">
     <div class="features-head">
         <div class="features-eyebrow">CHÚNG TÔI CUNG CẤP GÌ</div>
@@ -573,91 +563,99 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- ======== CÂU HỎI THƯỜNG GẶP (FAQ) ======== -->
+<!-- ====== FAQ SECTION ====== -->
 <div class="faq-section reveal">
-    <div class="faq-head">
-        <div class="faq-eyebrow">CÓ CÂU HỎI?</div>
-        <h2>Câu Hỏi Thường Gặp</h2>
+    <div class="faq-title">💬 Câu Hỏi Thường Gặp</div>
+    <div class="faq-sub">Những thắc mắc phổ biến khi sử dụng ZaTools</div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>🔒 Token của tôi có được bảo mật không?</span>
+            <span class="arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+            <strong>ZaTools</strong> không lưu trữ token Discord của bạn trên máy chủ dưới dạng văn bản thuần túy. Mọi quá trình xác thực đều thông qua OAuth2 và token được mã hóa. Bạn hoàn toàn có thể yên tâm về tính bảo mật.
+        </div>
     </div>
-    <div class="faq-list">
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Token của tôi có được bảo mật không?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">Token của bạn được mã hóa và lưu trữ an toàn trong cơ sở dữ liệu. Chúng tôi không chia sẻ hoặc sử dụng token cho bất kỳ mục đích nào khác ngoài việc duy trì kết nối Discord theo yêu cầu của bạn.</div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>🤔 Discord account token là gì?</span>
+            <span class="arrow">▼</span>
         </div>
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Discord account token là gì?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">Token Discord là một chuỗi ký tự dài dùng để xác thực tài khoản của bạn với API Discord. Bạn có thể lấy token bằng cách mở Discord trên trình duyệt, vào DevTools (F12) → Network → tìm request có "authorization".</div>
+        <div class="faq-answer">
+            Token Discord là một chuỗi ký tự đặc biệt dùng để xác thực tài khoản của bạn với API Discord. Nó giống như mật khẩu phiên, cho phép ứng dụng (như ZaTools) thực hiện các tác vụ thay mặt bạn mà không cần đăng nhập lại.
         </div>
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Tôi có thể treo nhiều tài khoản cùng lúc không?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">Có, tùy vào gói bạn chọn. Gói Free hỗ trợ 1 tài khoản, Starter 2, Pro 5 và VIP 35 tài khoản cùng lúc.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>📊 Tôi có thể treo nhiều tài khoản cùng lúc không?</span>
+            <span class="arrow">▼</span>
         </div>
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Chuyện gì xảy ra khi tôi tắt trình duyệt?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">Tài khoản của bạn vẫn được duy trì trên máy chủ của chúng tôi 24/7. Bạn có thể đóng trình duyệt và kiểm tra lại bất kỳ lúc nào – kết nối vẫn hoạt động.</div>
+        <div class="faq-answer">
+            Có! Tùy vào gói dịch vụ của bạn (Free, Starter, Pro, VIP) mà số lượng token được phép treo khác nhau. Gói VIP cho phép lên đến 35 token cùng lúc.
         </div>
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Tại sao trạng thái báo "Đang kết nối lại"?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">Đây là trạng thái tự động khi hệ thống phát hiện token bị ngắt kết nối (do mất mạng, Discord restart,...). Bot sẽ tự động kết nối lại sau vài giây.</div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>🔄 Chuyện gì xảy ra khi tôi tắt trình duyệt?</span>
+            <span class="arrow">▼</span>
         </div>
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Tài khoản của tôi có bị khóa không?</span>
-                <span class="faq-icon">+</span>
-            </div>
-            <div class="faq-answer">ZaTools sử dụng cơ chế hoạt động tự nhiên, không can thiệp sâu, vì vậy rủi ro khóa tài khoản là rất thấp. Tuy nhiên, chúng tôi khuyên bạn không nên thực hiện các hành vi vi phạm ToS của Discord.</div>
+        <div class="faq-answer">
+            Các phiên treo token chạy hoàn toàn trên máy chủ đám mây của ZaTools, vì vậy bạn có thể tắt trình duyệt hoặc tắt máy tính mà các tài khoản vẫn duy trì trạng thái online 24/7.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>⚠️ Tại sao trạng thái báo "Đang kết nối lại"?</span>
+            <span class="arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+            Khi mạng không ổn định hoặc Discord gặp sự cố, hệ thống sẽ tự động thử kết nối lại sau 5 giây. Bạn không cần làm gì cả, quá trình diễn ra tự động và trạng thái sẽ nhanh chóng trở lại bình thường.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>🚫 Tài khoản của tôi có bị khóa không?</span>
+            <span class="arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+            Việc sử dụng token để kết nối Voice Channel và thiết lập Rich Presence là hoàn toàn hợp lệ theo chính sách của Discord. Tuy nhiên, để đảm bảo an toàn, bạn không nên chia sẻ token với bất kỳ ai và chỉ sử dụng cho mục đích cá nhân.
         </div>
     </div>
 </div>
 
-<!-- ======== TÁC GIẢ & THÔNG TIN LIÊN HỆ ======== -->
-<div class="about-section reveal">
-    <div class="about-container">
-        <div class="about-bio">
-            <h3>👤 Về Tác Giả</h3>
-            <p>
-                <strong>Phan Trần Đăng Khoi</strong> — nhà phát triển chính của ZaTools. Với niềm đam mê tự động hóa và tối ưu trải nghiệm Discord, tôi đã tạo ra nền tảng này để giúp cộng đồng duy trì trạng thái online một cách dễ dàng và an toàn.
-            </p>
-            <p style="font-style: italic; color: var(--text-muted);">
-                “Khoảng khắc ảnh nhận ra mình đã yêu em quá nhiều. Là vào một ngày mưa tầm tã, anh không lo tìm chỗ trú, chỉ sợ em ở đâu đó cũng ướt mưa.”
-            </p>
-            <div class="social-links">
-                <a href="https://zyo.lol/ddeath" target="_blank">🌐 zyo.lol/ddeath</a>
-                <a href="https://t.me/thiendangcuaanh" target="_blank">💬 Telegram</a>
-                <a href="https://discord.gg/hix" target="_blank">🎮 Discord .gg/hix</a>
-                <a href="https://discord.gg/hoinguoixauvien" target="_blank">🎮 .gg/hoinguoixauvien</a>
-            </div>
+<!-- ====== AUTHOR & CONTACT ====== -->
+<div class="author-section reveal">
+    <div class="author-left">
+        <img src="https://i.imgur.com/IeytfHP.jpeg" alt="ZaTools Creator" />
+    </div>
+    <div class="author-right">
+        <div class="author-name">Phan Tran Dang Khoi</div>
+        <div class="author-role">✨ Nhà sáng lập ZaTools</div>
+        <div class="author-social">
+            <a href="https://discord.gg/K2rqbgGBC" target="_blank" class="social-link discord">
+                <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/></svg>
+                Hỗ trợ Discord
+            </a>
+            <a href="https://t.me/thiendangcuaanh" target="_blank" class="social-link telegram">
+                <svg viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L6.54 14.26l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.276.326z"/></svg>
+                Telegram
+            </a>
         </div>
         <div class="contact-info">
-            <h3>📬 Thông Tin Liên Hệ</h3>
-            <p><strong>📧 Email:</strong> ptdk28012010@gmail.com</p>
-            <p><strong>📞 SĐT:</strong> 0347201938</p>
-            <p><strong>📍 Địa chỉ:</strong> Vạn Kiếp, Bình Thạnh, TP.HCM</p>
-            <p><strong>🎵 Gia nhập từ:</strong> 19 Th10, 2024</p>
-            <p style="margin-top: 12px; border-top: 1px solid var(--border-light); padding-top: 14px;">
-                <strong>🔗 Kết nối:</strong><br>
-                <span class="highlight">🎵 thiendangcuaanh#666 ❤️</span><br>
-                <span class="highlight">🎵 dang khoi. ❤️</span>
-            </p>
+            <div><span class="label">📧 Email</span><br><a href="mailto:ptdk28012010@gmail.com">ptdk28012010@gmail.com</a></div>
+            <div><span class="label">📞 SĐT</span><br><a href="tel:0347201938">0347201938</a></div>
+            <div style="grid-column: 1 / -1;"><span class="label">🏠 Địa chỉ</span><br>Vạn Kiếp, Bình Thạnh, TP.HCM</div>
         </div>
     </div>
 </div>
 
+<!-- FOOTER -->
 <div class="footer reveal">
     <p>&copy; 2026 ZaTools Premium — Developed by Dang Khoi</p>
     <p style="color: var(--success-text); margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:700;">
@@ -668,6 +666,7 @@ HTML_LANDING = HTML_HEAD + """
 
 """ + THEME_SCRIPT + """
 <script>
+    // Hiệu ứng xuất hiện
     function reveal() {
         document.querySelectorAll(".reveal").forEach(el => {
             if (el.getBoundingClientRect().top < window.innerHeight - 60) el.classList.add("active");
@@ -676,18 +675,15 @@ HTML_LANDING = HTML_HEAD + """
     window.addEventListener("scroll", reveal);
     reveal();
 
-    // FAQ toggle
-    function toggleFaq(el) {
-        const answer = el.parentElement.querySelector('.faq-answer');
-        const icon = el.querySelector('.faq-icon');
-        if (answer.classList.contains('open')) {
-            answer.classList.remove('open');
-            icon.textContent = '+';
-            el.classList.remove('active');
+    // Toggle FAQ
+    function toggleFaq(element) {
+        const item = element.closest('.faq-item');
+        if (item.classList.contains('open')) {
+            item.classList.remove('open');
         } else {
-            answer.classList.add('open');
-            icon.textContent = '✕';
-            el.classList.add('active');
+            // Đóng tất cả các item khác (tuỳ chọn)
+            // document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+            item.classList.add('open');
         }
     }
 </script>
@@ -716,7 +712,7 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== DASHBOARD CHÍNH (GIỮ NGUYÊN) ==================
+# ================== DASHBOARD CHÍNH (ĐÃ FIX ICON + UI MỚI) ==================
 HTML_MAIN = HTML_HEAD + """
 <title>ZaTools - Dashboard</title>
 <style>
@@ -756,13 +752,25 @@ HTML_MAIN = HTML_HEAD + """
     [data-theme="light"] .dropdown-menu { background: rgba(255,255,255,0.98); }
     .dropdown-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
 
+    /* ===== FIX DROPDOWN ITEM: icon không bị cắt ===== */
     .dp-item {
-        display: flex; align-items: center; gap: 11px;
-        padding: 11px 14px; color: var(--text-muted); text-decoration: none;
-        font-size: 13px; font-weight: 600; border-radius: 12px; transition: 0.2s;
-        cursor: pointer; white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 11px 14px;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 12px;
+        transition: 0.2s;
+        cursor: pointer;
+        white-space: nowrap;
     }
-    .dp-item .svg-icon { width: 16px; height: 16px; min-width: 16px; flex-shrink: 0; overflow: visible; }
+    .dp-item .svg-icon {
+        width: 16px; height: 16px; min-width: 16px; flex-shrink: 0;
+        overflow: visible;
+    }
     .dp-item:hover, .dp-item.active-tab { background: var(--accent-hover); color: var(--accent); }
     .dp-logout { color: var(--danger-text); border-top: 1px dashed rgba(255,68,88,0.15); margin-top: 6px; padding-top: 10px; border-radius: 0; }
     .dp-logout:hover { background: rgba(255, 68, 88, 0.08); color: var(--danger-text); border-radius: 12px; }
@@ -770,12 +778,15 @@ HTML_MAIN = HTML_HEAD + """
     /* ===== CONTAINER ===== */
     .container { max-width: 700px; width: 100%; margin: 28px auto; padding: 0 14px; }
 
-    /* ===== STATS GRID ===== */
+    /* ===== STATS GRID - FIX ICON KHUẤT ===== */
     .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 22px; }
     .stat-card {
-        background: var(--card-bg); border: 1px solid var(--border-light);
-        border-radius: 18px; padding: 18px 16px; text-align: left; transition: 0.3s;
-        backdrop-filter: blur(16px); position: relative; overflow: hidden;
+        background: var(--card-bg);
+        border: 1px solid var(--border-light);
+        border-radius: 18px; padding: 18px 16px;
+        text-align: left; transition: 0.3s;
+        backdrop-filter: blur(16px);
+        position: relative; overflow: hidden;
     }
     .stat-card::after {
         content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
@@ -785,12 +796,25 @@ HTML_MAIN = HTML_HEAD + """
     .stat-card:hover { border-color: var(--stat-color, var(--accent)); transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
     .stat-card:hover::after { opacity: 1; }
 
+    /* FIX: stat-card h3 - icon hiển thị đầy đủ, không bị cắt */
     .stat-card h3 {
-        font-size: 10px; color: var(--text-muted); text-transform: uppercase;
-        font-weight: 800; letter-spacing: 0.8px; margin-bottom: 10px;
-        display: flex; align-items: center; gap: 6px; overflow: visible;
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: visible;  /* QUAN TRỌNG: không clip icon */
     }
-    .stat-card h3 .svg-icon { width: 14px; height: 14px; min-width: 14px; overflow: visible; color: var(--stat-color, var(--accent)); opacity: 0.8; }
+    .stat-card h3 .svg-icon {
+        width: 14px; height: 14px; min-width: 14px;
+        overflow: visible;
+        color: var(--stat-color, var(--accent));
+        opacity: 0.8;
+    }
     .stat-card h2 { font-size: 26px; font-weight: 900; color: var(--text-main); line-height: 1; }
     .stat-card h2 span { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
     .stat-card .highlight { color: var(--plan-text); }
@@ -1484,7 +1508,7 @@ def auto_bootloader():
     except: pass
 auto_bootloader()
 
-# ================== ROUTES ==================
+# ================== ROUTES (GIỮ NGUYÊN LOGIC) ==================
 @app.route('/sepay_webhook', methods=['POST'])
 def sepay_webhook():
     try:
