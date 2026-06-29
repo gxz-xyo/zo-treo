@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = "za_tools_final_v18_full_log"
+app.secret_key = "za_tools_final_v20_wallet_system"
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ================== CẤU HÌNH DATABASE ==================
@@ -21,11 +21,11 @@ try:
     admin_user = "28012010"
     admin_pass = "itachi5867"
     if not users_collection.find_one({"username": admin_user}):
-        users_collection.insert_one({"username": admin_user, "password": generate_password_hash(admin_pass), "max_tokens": 9999, "is_admin": True})
+        users_collection.insert_one({"username": admin_user, "password": generate_password_hash(admin_pass), "max_tokens": 9999, "is_admin": True, "balance": 0})
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V18 - Phục hồi hệ thống LOG & Tự kết nối lại.")
+    print("✅ MongoDB OK! Đã kích hoạt V20 - Hệ thống Ví Coin & Cửa hàng Premium.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -38,7 +38,6 @@ DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token'
 
 def get_base_url(): return "https://zo-treo.onrender.com"
 
-# ================== HÀM KIỂM TRA THỜI HẠN GÓI ==================
 def get_user_limit(username):
     user = users_collection.find_one({"username": username})
     if not user: return 1, "Gói Free"
@@ -73,7 +72,7 @@ def delete_storage_item(bot_key, username):
     try: accounts_collection.delete_one({"bot_key": bot_key, "owner": username})
     except: pass
 
-# ================== CẤU TRÚC HTML & CSS BIẾN SÁNG TỐI ==================
+# ================== CẤU TRÚC HTML & CSS ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -95,7 +94,7 @@ HTML_HEAD = """
             --nav-bg: rgba(11, 12, 16, 0.9); --sidebar-bg: rgba(21, 26, 33, 0.98);
             --account-card: rgba(11, 12, 16, 0.5); --log-bg: rgba(0, 0, 0, 0.5);
             --log-text: #4cdf8b; --shadow: rgba(0,0,0,0.3); --switch-bg: rgba(47, 62, 70, 0.8);
-            --success-text: #2ecc71; --danger-text: #e74c3c;
+            --success-text: #2ecc71; --danger-text: #e74c3c; --coin-color: #f1c40f;
         }
 
         [data-theme="light"] {
@@ -105,7 +104,7 @@ HTML_HEAD = """
             --btn-bg: linear-gradient(135deg, #0284c7, #0369a1); --nav-bg: rgba(255, 255, 255, 0.95);
             --sidebar-bg: rgba(255, 255, 255, 0.98); --account-card: #f8fafc; --log-bg: #f1f5f9;
             --log-text: #059669; --shadow: rgba(0,0,0,0.08); --switch-bg: #cbd5e1;
-            --success-text: #059669; --danger-text: #dc2626;
+            --success-text: #059669; --danger-text: #dc2626; --coin-color: #d4ac0d;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
@@ -124,6 +123,8 @@ HTML_HEAD = """
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-hover); }
         .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: var(--success-text); }
         .btn-danger { background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3); color: var(--danger-text); padding: 12px; }
+        .btn-buy { background: rgba(241, 196, 15, 0.1); border: 1px solid rgba(241, 196, 15, 0.3); color: var(--coin-color); margin-top:15px;}
+        .btn-buy:hover { background: var(--coin-color); color: #000; transform: translateY(-2px);}
         
         .svg-icon { width: 18px; height: 18px; stroke-width: 2; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; display: inline-flex; flex-shrink: 0; vertical-align: middle;}
         
@@ -151,30 +152,26 @@ HTML_HEAD = """
     </style>
 """
 
-# ================== GIAO DIỆN ĐĂNG NHẬP ==================
 HTML_AUTH = HTML_HEAD + """
 <title>Za Tools - Login</title>
 <style>
     body { display: flex; justify-content: center; align-items: center; position: relative;}
     .auth-container { max-width: 400px; width: 90%; padding: 35px 25px; margin: 15px;}
-    .logo { color: var(--text-main); font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 5px; transition: 0.3s;}
+    .logo { color: var(--text-main); font-size: 32px; font-weight: 800; text-align: center; margin-bottom: 5px;}
     .logo span { color: var(--accent); }
-    .sub { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px; transition: 0.3s;}
+    .sub { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px;}
     .divider { display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; margin: 20px 0; font-weight: 800; text-transform: uppercase; }
-    .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--input-border); transition: 0.3s;}
-    .divider:not(:empty)::before { margin-right: 1em; } .divider:not(:empty)::after { margin-left: 1em; }
+    .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--input-border);}
     .btn-oauth { background: #5865F2; color: #fff; text-decoration:none; border:none;}
     .switch-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
     .switch-link a { color: var(--accent); text-decoration: none; font-weight: 600; }
-    
     .theme-corner { position: absolute; top: 20px; right: 20px; }
 </style>
 </head>
 <body>
-    <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()" title="Chuyển chế độ Sáng/Tối">
+    <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()" title="Chuyển chế độ">
         <svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
     </button>
-
     <div class="card auth-container">
         <div class="logo">Za <span>Tools</span></div>
         <div class="sub">Hệ thống treo voice siêu tốc</div>
@@ -184,14 +181,10 @@ HTML_AUTH = HTML_HEAD + """
         <form method="POST" action="{{ '/login' if mode == 'login' else '/register' }}">
             <div class="input-group"><label>Tài khoản</label><input type="text" name="username" required placeholder="Tên đăng nhập..."></div>
             <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
-            <button type="submit" class="btn btn-primary">
-                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                {{ 'ĐĂNG NHẬP' if mode == 'login' else 'TẠO TÀI KHOẢN' }}
-            </button>
+            <button type="submit" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> {{ 'ĐĂNG NHẬP' if mode == 'login' else 'TẠO TÀI KHOẢN' }}</button>
         </form>
         <div class="divider">Hoặc</div>
-        <a href="/login/discord" class="btn btn-oauth">
-            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+        <a href="/login/discord" class="btn btn-oauth"><svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
             Đăng nhập bằng Discord
         </a>
         <div class="switch-link">
@@ -199,39 +192,22 @@ HTML_AUTH = HTML_HEAD + """
             {% else %}Đã có tài khoản? <a href="/login">Vào đăng nhập</a>{% endif %}
         </div>
     </div>
-
     <script>
         function toggleTheme() {
             const root = document.documentElement;
             const isLight = root.getAttribute('data-theme') === 'light';
-            if (isLight) {
-                root.removeAttribute('data-theme');
-                localStorage.setItem('za_theme', 'dark');
-                document.getElementById('theme-icon').innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-            } else {
-                root.setAttribute('data-theme', 'light');
-                localStorage.setItem('za_theme', 'light');
-                document.getElementById('theme-icon').innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-            }
+            if (isLight) { root.removeAttribute('data-theme'); localStorage.setItem('za_theme', 'dark'); } 
+            else { root.setAttribute('data-theme', 'light'); localStorage.setItem('za_theme', 'light'); }
         }
-        window.addEventListener('DOMContentLoaded', () => {
-            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-            const iconBtn = document.getElementById('theme-icon');
-            if(iconBtn) {
-                if(isLight) iconBtn.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-                else iconBtn.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-            }
-        });
     </script>
 </body>
 </html>
 """
 
-# ================== GIAO DIỆN DASHBOARD CHÍNH ==================
 HTML_MAIN = HTML_HEAD + """
 <title>Za Tools - Premium Dashboard</title>
 <style>
-    .navbar { background: var(--nav-bg); backdrop-filter: blur(10px); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 100; transition: 0.3s;}
+    .navbar { background: var(--nav-bg); backdrop-filter: blur(10px); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 100;}
     .nav-left { display: flex; align-items: center; }
     .menu-btn { background: none; border: none; color: var(--text-main); padding: 5px; cursor: pointer; margin-right: 12px; }
     .logo { color: var(--text-main); font-size: 20px; font-weight: 800; letter-spacing: -0.5px;}
@@ -241,9 +217,9 @@ HTML_MAIN = HTML_HEAD + """
     .sidebar.active { left: 0; }
     .close-btn { position: absolute; right: 15px; top: 15px; color: var(--text-muted); font-size: 24px; cursor: pointer; background: none; border: none; }
     
-    .user-tag { background: var(--account-card); padding: 12px; border-radius: 12px; text-align: center; color: var(--text-main); font-size: 14px; font-weight: 600; margin-bottom: 20px; border: 1px solid var(--border-light); }
-    .user-tag span { color: #ff416c; font-size: 11px; display: block; margin-top: 4px;}
-    .user-tag .expiry { color: var(--success-text); font-size: 10px; margin-top: 2px; }
+    .user-tag { background: var(--account-card); padding: 15px 12px; border-radius: 12px; text-align: center; color: var(--text-main); font-size: 14px; font-weight: 600; margin-bottom: 20px; border: 1px solid var(--border-light); }
+    .wallet-balance { color: var(--coin-color); font-size: 18px; font-weight: 800; margin: 8px 0; display:flex; justify-content:center; align-items:center; gap:5px;}
+    .user-tag .expiry { color: var(--success-text); font-size: 11px; margin-top: 5px; border-top: 1px dashed var(--input-border); padding-top: 8px;}
     
     .nav-link { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 600; transition: 0.2s; border-radius: 10px; margin-bottom: 5px; }
     .nav-link:hover, .nav-link.active-link { color: var(--accent); background: var(--accent-hover); }
@@ -260,23 +236,27 @@ HTML_MAIN = HTML_HEAD + """
     .account-card { background: var(--account-card); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid var(--input-border); display: flex; justify-content: space-between; align-items: center; }
     .account-card .name { font-weight: 700; color: var(--text-main); font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;}
     
-    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; white-space: pre-wrap; word-break: break-word;}
+    .log-box { background: var(--log-bg); border-radius: 12px; padding: 12px; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 11px; color: var(--log-text); border: 1px solid var(--input-border); margin-bottom: 15px; white-space: pre-wrap; word-break: break-word;}
     
     .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 900; display: none; }
     .overlay.active { display: block; }
     
     .limit-badge { background: var(--accent-hover); color: var(--accent); padding: 10px 15px; border-radius: 10px; font-size: 12px; border: 1px solid var(--border-light); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-weight: 600;}
     
-    .plan-box { background: var(--card-bg); border: 1px solid var(--input-border); border-radius: 14px; padding: 20px; margin-bottom: 15px; text-align: center; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden;}
-    .plan-box:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .plan-box { background: var(--card-bg); border: 1px solid var(--input-border); border-radius: 14px; padding: 20px; margin-bottom: 15px; text-align: center; transition: 0.3s; position: relative; overflow: hidden;}
+    .plan-box:hover { border-color: var(--coin-color); transform: translateY(-3px); }
     .plan-title { font-size: 13px; font-weight: 800; color: var(--text-muted); margin-bottom: 5px; }
-    .plan-price { font-size: 24px; color: var(--text-main); font-weight: 800; margin-bottom: 12px; }
+    .plan-price { font-size: 24px; color: var(--text-main); font-weight: 800; margin-bottom: 12px; display:flex; justify-content:center; align-items:center; gap:5px;}
     .plan-price span { font-size: 12px; color: var(--text-muted); font-weight: 500;}
     .plan-feature { font-size: 12px; color: var(--text-main); margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 6px;}
     .plan-feature svg { color: var(--success-text); width: 14px; height: 14px;}
     .plan-vip { border-color: rgba(255, 65, 108, 0.5); background: linear-gradient(180deg, rgba(255, 65, 108, 0.05) 0%, transparent 100%); }
     .plan-vip .plan-title { color: #ff416c; }
     .plan-vip::before { content: 'HOT'; position: absolute; top: 10px; right: -25px; background: #ff416c; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 25px; transform: rotate(45deg); }
+    
+    .tab-header { display: flex; gap: 10px; margin-bottom: 20px; background: var(--account-card); padding: 5px; border-radius: 12px;}
+    .tab-btn { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: 0.3s;}
+    .tab-btn.active { background: var(--btn-bg); color: #fff; }
     
     @media (max-width: 600px) {
         .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -304,13 +284,13 @@ HTML_MAIN = HTML_HEAD + """
     <button class="close-btn" onclick="toggleSidebar()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     <div class="user-tag">
         @{{ current_user }}
-        <span>Thành Viên {% if is_admin %}Admin{% else %}Tiêu chuẩn{% endif %}</span>
+        <div class="wallet-balance"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> {{ "{:,}".format(balance) }} </div>
         <div class="expiry">Hạn gói: {{ expiry_info }}</div>
     </div>
     
     <a href="#" class="nav-link active-link" onclick="switchTab('treo', this)"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Treo Voice</a>
     <a href="#" class="nav-link" onclick="switchTab('saved', this)"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Tài khoản đã lưu</a>
-    <a href="#" class="nav-link" onclick="switchTab('premium', this)" style="color: #ff416c;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 22 22 7 12 2"></polygon><polyline points="2 7 12 7 22 7"></polyline><polyline points="12 22 12 7"></polyline></svg> Gia Hạn Premium</a>
+    <a href="#" class="nav-link" onclick="switchTab('premium', this)" style="color: var(--coin-color);"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> Ví Coin & Nâng Cấp</a>
     
     {% if is_admin %}
     <a href="/admin_dangkhoi" class="nav-link" style="color: #4cdf8b; margin-top: 15px; border-top: 1px dashed var(--input-border); padding-top: 20px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Mắt Thần (Admin)</a>
@@ -359,7 +339,7 @@ HTML_MAIN = HTML_HEAD + """
             <div class="account-card">
                 <div>
                     <div class="name"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--accent); width:16px; height:16px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ bot.get('display_name', 'Đang kết nối...') }}</div>
-                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px; display:flex; align-items:center; gap:4px;">{{ 'Treo vĩnh cửu' if bot.get('connected') else 'Đang thiết lập cổng...' }}</div>
+                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px; display:flex; align-items:center; gap:4px;">Treo vĩnh cửu</div>
                 </div>
                 <form method="POST" action="/stop"><input type="hidden" name="bot_key" value="{{ key }}"><button type="submit" class="btn btn-danger"><svg class="svg-icon" viewBox="0 0 24 24" style="margin:0;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button></form>
             </div>
@@ -393,37 +373,55 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- TAB PREMIUM -->
+    <!-- TAB PREMIUM & VÍ -->
     <div id="tab-premium" class="tab-content">
-        <div class="card">
-            <div class="card-title" style="color: #ff416c;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 22 22 7 12 2"></polygon><polyline points="2 7 12 7 22 7"></polyline><polyline points="12 22 12 7"></polyline></svg> NÂNG CẤP DỊCH VỤ</div>
-            <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:20px;">Thanh toán bằng QR Code, hệ thống tự động nâng cấp sau 10 giây. <b style="color:var(--text-main);">Gói có hiệu lực 30 ngày.</b></p>
+        <div class="tab-header">
+            <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
+            <div class="tab-btn" id="btn-mua" onclick="switchSubTab('mua')">CỬA HÀNG GÓI</div>
+        </div>
+        
+        <!-- Khu vực nạp tiền -->
+        <div id="sub-nap" class="card">
+            <div class="card-title" style="color: var(--coin-color);"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> NẠP SỐ DƯ (1 VNĐ = 1 COIN)</div>
+            <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:15px;">Quét QR chuyển khoản với nội dung yêu cầu. Tiền sẽ vào ví tự động sau 5s.</p>
             
-            <div class="plan-box" onclick="showQR(25000, 'STARTER')">
-                <div class="plan-title">GÓI STARTER</div>
-                <div class="plan-price">25.000đ <span>/ Tháng</span></div>
-                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo 2 Token cùng lúc</div>
+            <div class="input-group">
+                <input type="number" id="nap_amount" placeholder="Nhập số tiền muốn nạp..." min="10000" step="10000">
             </div>
+            <button onclick="generateNapQR()" class="btn btn-primary" style="margin-bottom:20px;">TẠO MÃ NẠP TIỀN</button>
             
-            <div class="plan-box" onclick="showQR(45000, 'PRO')">
-                <div class="plan-title" style="color: var(--accent);">GÓI PRO</div>
-                <div class="plan-price">45.000đ <span>/ Tháng</span></div>
-                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo 5 Token cùng lúc</div>
-            </div>
-
-            <div class="plan-box plan-vip" onclick="showQR(350000, 'VIP')">
-                <div class="plan-title">GÓI VIP</div>
-                <div class="plan-price">350.000đ <span>/ Tháng</span></div>
-                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo 35 Token cùng lúc</div>
-            </div>
-
-            <div id="qr_area" style="display: none; text-align: center; margin-top: 20px; border-top: 1px dashed var(--input-border); padding-top: 20px;">
-                <p style="color: var(--text-main); margin-bottom: 12px; font-size:14px; font-weight: 600;">Quét mã cho gói <span id="qr_plan_name" style="color:#ff416c;"></span></p>
-                <img id="qr_img" src="" style="width: 220px; max-width: 100%; height: auto; border-radius: 12px; border: 2px solid var(--accent);">
+            <div id="qr_nap_area" style="display: none; text-align: center; border-top: 1px dashed var(--input-border); padding-top: 20px;">
+                <img id="qr_nap_img" src="" style="width: 220px; max-width: 100%; border-radius: 12px; border: 2px solid var(--coin-color);">
                 <div style="margin-top: 15px; font-size: 13px; background: var(--input-bg); padding: 12px; border-radius: 10px;">
-                    <span style="color:var(--text-muted);">App ngân hàng sẽ tự điền nội dung:</span><br>
+                    <span style="color:var(--text-muted);">Nội dung nạp tiền:</span><br>
                     <b style="color:var(--success-text); font-size: 16px; letter-spacing: 1px;">ZATOOLS {{ current_user }}</b>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Khu vực mua gói -->
+        <div id="sub-mua" class="card" style="display: none;">
+            <div class="card-title" style="color: #ff416c;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 22 22 7 12 2"></polygon><polyline points="2 7 12 7 22 7"></polyline><polyline points="12 22 12 7"></polyline></svg> MUA GÓI PREMIUM (30 NGÀY)</div>
+            
+            <div class="plan-box">
+                <div class="plan-title">GÓI STARTER</div>
+                <div class="plan-price"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--coin-color);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> 25,000</div>
+                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo tối đa 2 Token</div>
+                <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="STARTER"><button type="submit" class="btn btn-buy">DÙNG COIN MUA GÓI</button></form>
+            </div>
+            
+            <div class="plan-box">
+                <div class="plan-title" style="color: var(--accent);">GÓI PRO</div>
+                <div class="plan-price"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--coin-color);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> 45,000</div>
+                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo tối đa 5 Token</div>
+                <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="PRO"><button type="submit" class="btn btn-buy">DÙNG COIN MUA GÓI</button></form>
+            </div>
+
+            <div class="plan-box plan-vip">
+                <div class="plan-title">GÓI VIP</div>
+                <div class="plan-price"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--coin-color);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> 350,000</div>
+                <div class="plan-feature"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Treo tối đa 35 Token</div>
+                <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="VIP"><button type="submit" class="btn btn-buy">DÙNG COIN MUA GÓI</button></form>
             </div>
         </div>
     </div>
@@ -445,6 +443,17 @@ HTML_MAIN = HTML_HEAD + """
         document.getElementById('overlay').classList.remove('active');
         localStorage.setItem('za_active_tab', tabId);
     }
+    
+    function switchSubTab(sub) {
+        document.getElementById('sub-nap').style.display = 'none';
+        document.getElementById('sub-mua').style.display = 'none';
+        document.getElementById('btn-nap').classList.remove('active');
+        document.getElementById('btn-mua').classList.remove('active');
+        
+        document.getElementById('sub-' + sub).style.display = 'block';
+        document.getElementById('btn-' + sub).classList.add('active');
+    }
+
     window.onload = () => {
         let reqTab = '{{ active_tab }}';
         let tabToLoad = reqTab !== 'None' ? reqTab : (localStorage.getItem('za_active_tab') || 'treo');
@@ -452,14 +461,15 @@ HTML_MAIN = HTML_HEAD + """
         let targetLink = Array.from(links).find(l => l.getAttribute('onclick').includes(tabToLoad));
         if(targetLink) switchTab(tabToLoad, targetLink);
     };
-    function showQR(amount, planName) {
+    
+    function generateNapQR() {
+        let amount = document.getElementById('nap_amount').value;
+        if (!amount || amount < 10000) { alert('Vui lòng nạp tối thiểu 10.000 VNĐ'); return; }
         let user = '{{ current_user }}';
         let addInfo = encodeURIComponent('ZATOOLS ' + user);
         let url = `https://img.vietqr.io/image/MB-1628012010-compact2.png?amount=${amount}&addInfo=${addInfo}&accountName=Phan%20Tran%20Dang%20Khoi`;
-        document.getElementById('qr_img').src = url;
-        document.getElementById('qr_plan_name').innerText = planName;
-        document.getElementById('qr_area').style.display = 'block';
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        document.getElementById('qr_nap_img').src = url;
+        document.getElementById('qr_nap_area').style.display = 'block';
     }
     
     function toggleTheme() {
@@ -468,29 +478,18 @@ HTML_MAIN = HTML_HEAD + """
         if (isLight) {
             root.removeAttribute('data-theme');
             localStorage.setItem('za_theme', 'dark');
-            document.getElementById('theme-icon').innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
         } else {
             root.setAttribute('data-theme', 'light');
             localStorage.setItem('za_theme', 'light');
-            document.getElementById('theme-icon').innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
         }
     }
-    window.addEventListener('DOMContentLoaded', () => {
-        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        const iconBtn = document.getElementById('theme-icon');
-        if(iconBtn) {
-            if(isLight) iconBtn.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-            else iconBtn.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-        }
-    });
-
     setInterval(() => { fetch('/ping'); }, 15000);
 </script>
 </body>
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG & LOGGING ĐẦY ĐỦ ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX AUTO-RECONNECT) ==================
 def run_bot(bot_key, config, username):
     token = config['token']
     guild_id = config['guild_id']
@@ -500,10 +499,7 @@ def run_bot(bot_key, config, username):
     video = config.get('video', False)
     stream = config.get('stream', False)
 
-    ws = None
-    last_seq = None
-    heartbeat_interval = 41250
-    connected = False
+    ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
 
     if username not in user_bots: user_bots[username] = {}
     user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
@@ -516,13 +512,11 @@ def run_bot(bot_key, config, username):
                 user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
 
     def update_status(st):
-        if username in user_bots and bot_key in user_bots[username]:
-            user_bots[username][bot_key]['connected'] = st
+        if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
 
     def send_voice_update(ws_client):
         if not ws_client or not ws_client.keep_running: return
-        try:
-            ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
+        try: ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
         except: pass
 
     def on_message(ws_client, message):
@@ -540,19 +534,16 @@ def run_bot(bot_key, config, username):
         elif op == 0:
             if t == 'READY':
                 d_name = data['d']['user']['username']
-                if username in user_bots and bot_key in user_bots[username]:
-                    user_bots[username][bot_key]['display_name'] = d_name
+                if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['display_name'] = d_name
                 add_log(f"🎯 Đăng nhập thành công: {d_name}")
                 send_voice_update(ws_client)
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
-                    connected = True
-                    update_status(True)
+                    connected = True; update_status(True)
                     add_log("✅ Đã tham gia phòng thoại vĩnh cửu!")
                 elif d.get('channel_id') is None and connected:
-                    connected = False
-                    update_status(False)
+                    connected = False; update_status(False)
                     add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
                     send_voice_update(ws_client)
         elif op == 9: ws_client.close()
@@ -589,7 +580,6 @@ def run_bot(bot_key, config, username):
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         threading.Thread(target=keep_alive_loop, daemon=True).start()
         ws.run_forever()
-
     start_ws()
 
 # ================== AUTO-BOOTLOADER ==================
@@ -598,45 +588,66 @@ def auto_bootloader():
         for doc in accounts_collection.find():
             username = doc.get("owner"); bot_key = doc.get("bot_key")
             if not username or not bot_key: continue
-            
             limit, _ = get_user_limit(username)
             if username not in user_bots: user_bots[username] = {}
             if len(user_bots[username]) >= limit: continue 
-            
             config = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
             if bot_key not in user_bots[username]: threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
     except: pass
 auto_bootloader()
 
-# ================== SEPAY WEBHOOK (XỬ LÝ NÂNG CẤP 1 THÁNG) ==================
+# ================== SEPAY WEBHOOK (NẠP COIN TỰ ĐỘNG) ==================
 @app.route('/sepay_webhook', methods=['POST'])
 def sepay_webhook():
     try:
         data = request.json
         if not data: return jsonify({"error": "No data"}), 400
-        content = data.get('content', data.get('transferContent', '')).upper()
+        raw_content = data.get('content', data.get('transferContent', ''))
         amount = int(data.get('transferAmount', data.get('amount', 0)))
+        normalized_content = raw_content.lower().replace(" ", "").replace("-", "").replace("_", "")
         
-        if 'ZATOOLS' in content:
-            parts = content.split('ZATOOLS')
-            if len(parts) > 1:
-                username_part = parts[1].strip().split()[0].lower()
-                user = users_collection.find_one({"username": username_part})
-                if user:
-                    current_limit = user.get('max_tokens', 1)
-                    new_limit = current_limit
-                    if amount >= 350000: new_limit = max(current_limit, 35)
-                    elif amount >= 45000: new_limit = max(current_limit, 5)
-                    elif amount >= 25000: new_limit = max(current_limit, 2)
-                    
-                    if new_limit > 1: 
-                        new_expiry = int(time.time()) + 2592000
-                        users_collection.update_one(
-                            {"username": username_part}, 
-                            {"$set": {"max_tokens": new_limit, "expiry_date": new_expiry}}
-                        )
+        if 'zatools' in normalized_content:
+            for user in users_collection.find():
+                normalized_db_username = user['username'].lower().replace(" ", "").replace("-", "").replace("_", "")
+                if "zatools" + normalized_db_username in normalized_content:
+                    users_collection.update_one({"username": user['username']}, {"$inc": {"balance": amount}})
+                    print(f"💰 SePay: Đã nạp {amount} Coin cho {user['username']}")
+                    break
         return jsonify({"success": True})
     except Exception as e: return jsonify({"error": str(e)}), 500
+
+# ================== API MUA GÓI BẰNG COIN ==================
+@app.route('/buy_plan', methods=['POST'])
+def buy_plan():
+    if 'username' not in session: return redirect(url_for('login'))
+    usr = session['username']
+    plan = request.form.get('plan')
+    
+    costs = {"STARTER": 25000, "PRO": 45000, "VIP": 350000}
+    limits = {"STARTER": 2, "PRO": 5, "VIP": 35}
+    
+    if plan not in costs: return redirect(url_for('index', tab='premium'))
+    
+    user_db = users_collection.find_one({"username": usr})
+    current_balance = user_db.get('balance', 0)
+    cost = costs[plan]
+    
+    if current_balance >= cost:
+        new_balance = current_balance - cost
+        new_limit = max(user_db.get('max_tokens', 1), limits[plan])
+        new_expiry = int(time.time()) + 2592000 # 30 ngày
+        
+        users_collection.update_one(
+            {"username": usr}, 
+            {"$set": {"balance": new_balance, "max_tokens": new_limit, "expiry_date": new_expiry}}
+        )
+        session['flash_msg'] = f"Đã mua thành công Gói {plan} (30 Ngày)!"
+        session['flash_type'] = "success"
+    else:
+        session['flash_msg'] = "Ví của bạn không đủ Coin. Vui lòng nạp thêm!"
+        session['flash_type'] = "error"
+        
+    return redirect(url_for('index', tab='premium'))
 
 # ================== ROUTES ỨNG DỤNG CHÍNH ==================
 @app.route('/')
@@ -647,11 +658,12 @@ def index():
     max_tokens, expiry_info = get_user_limit(usr)
     db_user = users_collection.find_one({"username": usr})
     is_admin = db_user.get('is_admin', False) if db_user else False
+    balance = db_user.get('balance', 0) if db_user else 0
     
     active_bots = [(k, v) for k, v in user_bots.get(usr, {}).items() if v.get('running', False)]
     log = active_bots[0][1].get('log', []) if active_bots else []
     
-    return render_template_string(HTML_MAIN, bot_items=active_bots, current_user=usr, 
+    return render_template_string(HTML_MAIN, bot_items=active_bots, current_user=usr, balance=balance,
                                   saved_profiles=get_saved_profiles(usr), max_tokens=max_tokens, 
                                   running_count=len(active_bots), is_admin=is_admin, expiry_info=expiry_info,
                                   flash_msg=session.pop('flash_msg', None), flash_type=session.pop('flash_type', 'success'),
@@ -661,16 +673,13 @@ def index():
 def start():
     if 'username' not in session: return redirect(url_for('login'))
     usr = session['username']
-    
-    max_tokens, expiry_info = get_user_limit(usr)
+    max_tokens, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     bot_key = f"{request.form['guild_id']}_{request.form['channel_id']}"
-    
     if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
         session['flash_msg'] = f"Gói của bạn ({max_tokens} slot) đã đầy hoặc hết hạn!"
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
-
     config = {k:v for k,v in request.form.items() if k not in ['profile_name']}
     save_storage_item(bot_key, config, usr)
     if usr not in user_bots: user_bots[usr] = {}
@@ -683,11 +692,9 @@ def start_saved():
     usr = session.get('username')
     max_tokens, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
-    
     prof_id = request.form.get('profile_id')
     try: prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
     except: prof = None
-    
     if prof:
         bot_key = f"{prof['guild_id']}_{prof['channel_id']}"
         if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
@@ -720,7 +727,7 @@ def register():
     if request.method == 'POST':
         usr = request.form['username'].strip().lower()
         if users_collection.find_one({"username": usr}): return render_template_string(HTML_AUTH, mode='register', error="Tên đăng nhập đã tồn tại!")
-        users_collection.insert_one({"username": usr, "password": generate_password_hash(request.form['password'].strip()), "max_tokens": 1, "expiry_date": 0})
+        users_collection.insert_one({"username": usr, "password": generate_password_hash(request.form['password'].strip()), "max_tokens": 1, "expiry_date": 0, "balance": 0})
         return redirect(url_for('login', success="Đăng ký thành công!"))
     return render_template_string(HTML_AUTH, mode='register')
 
@@ -757,7 +764,7 @@ def cb_discord():
     discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord")
     discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=request.url.replace('http://', 'https://'))
     usr = f"{discord.get('https://discord.com/api/users/@me').json()['username']}_dc"
-    if not users_collection.find_one({"username": usr}): users_collection.insert_one({"username": usr, "oauth": "discord", "max_tokens": 1, "expiry_date": 0})
+    if not users_collection.find_one({"username": usr}): users_collection.insert_one({"username": usr, "oauth": "discord", "max_tokens": 1, "expiry_date": 0, "balance": 0})
     session['username'] = usr
     return redirect(url_for('index'))
 
@@ -786,13 +793,6 @@ def admin_dashboard():
             <div style="font-size: 14px; display:flex; justify-content:space-between; color:var(--text-muted); font-weight:600;">⚡ Luồng đang cày: <b style='color:var(--success-text); font-size:18px;'>{active_running}</b></div>
         </div>
         <a href="/" style="color:var(--accent); text-decoration:none; font-weight:700; margin-top:10px; font-size: 14px;">← QUAY LẠI HỆ THỐNG</a>
-        
-        <script>
-            window.addEventListener('DOMContentLoaded', () => {{
-                const savedTheme = localStorage.getItem('za_theme') || 'dark';
-                if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            }});
-        </script>
     </body>
     </html>
     """
