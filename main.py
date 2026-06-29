@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.5 - Auto Proxy Image RPC.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.6 - Fix Ảnh RPC & Thêm Đếm Giờ.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -85,7 +85,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== CẤU TRÚC HTML & CSS BIẾN SÁNG TỐI ==================
+# ================== CẤU TRÚC HTML & CSS ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -125,7 +125,7 @@ HTML_HEAD = """
         .input-group label { display: block; color: var(--accent); font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; color: var(--text-main); font-size: 14px; outline: none; transition: 0.3s; }
         .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-hover); }
-        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; }
         .btn-primary { background: var(--btn-bg); border: 1px solid var(--accent-hover); color: #fff; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-hover); }
         .btn-success { background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); color: var(--success-text); }
@@ -137,7 +137,6 @@ HTML_HEAD = """
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.success { background: rgba(46, 204, 113, 0.1); color: var(--success-text); border: 1px solid rgba(46, 204, 113, 0.2); }
         .msg.error { background: rgba(231, 76, 60, 0.1); color: var(--danger-text); border: 1px solid rgba(231, 76, 60, 0.2); }
-        .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         .theme-toggle-btn { background: var(--account-card); border: 1px solid var(--input-border); color: var(--text-main); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink:0;}
         .theme-toggle-btn:hover { background: var(--accent-hover); color: var(--accent); }
         @media (max-width: 600px) { .card { padding: 20px; border-radius: 16px;} .btn-flex { flex-direction: column; gap: 10px; } }
@@ -675,7 +674,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING (CUSTOM RPC CORE TỐI THƯỢNG) ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX ẢNH BẰNG MP:) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -687,6 +686,7 @@ def run_bot(bot_key, config, username):
     stream = str(config.get('stream', 'False')).lower() in ['true', 'on', '1']
 
     ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
+    start_time = int(time.time() * 1000) # ĐẾM GIỜ CHƠI TỪ LÚC CHẠY BOT
 
     if username not in user_bots: user_bots[username] = {}
     user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
@@ -753,14 +753,15 @@ def run_bot(bot_key, config, username):
                 activity = {
                     "name": status_text,
                     "type": 0,
-                    "application_id": rpc_app_id if rpc_app_id else "1504310281625403544"
+                    "application_id": rpc_app_id if rpc_app_id else "1504310281625403544",
+                    "timestamps": {"start": start_time} # 🕒 THÊM ĐẾM GIỜ Ở ĐÂY
                 }
                 
                 if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
                 if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
                 
                 rpc_image = config.get('rpc_image', '').strip()
-                # HACK: Tự động bắt Discord Proxy cái ảnh Imgur
+                # 🛠️ FIX LỖI ẢNH: Thêm chữ "mp:" vào trước link trả về
                 if rpc_image.startswith('http') and rpc_app_id:
                     try:
                         res = requests.post(
@@ -770,7 +771,7 @@ def run_bot(bot_key, config, username):
                             timeout=5
                         )
                         if res.status_code == 200:
-                            rpc_image = res.json()[0]['external_asset_path']
+                            rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
                     except: pass
                 
                 if rpc_image:
