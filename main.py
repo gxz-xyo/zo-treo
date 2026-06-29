@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.4 - Custom RPC Tối Thượng.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.5 - Auto Proxy Image RPC.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -120,7 +120,7 @@ HTML_HEAD = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg-main); color: var(--text-main); overflow-x: hidden; min-height: 100vh; transition: background 0.3s, color 0.3s; }
         .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border-light); box-shadow: 0 8px 32px var(--shadow); transition: 0.3s;}
-        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
+        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; justify-content: space-between; gap: 8px;}
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; color: var(--accent); font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; color: var(--text-main); font-size: 14px; outline: none; transition: 0.3s; }
@@ -363,9 +363,13 @@ HTML_MAIN = HTML_HEAD + """
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required></div>
                 <div class="input-group"><label>ID Kênh Voice</label><input type="text" name="channel_id" required></div>
                 
-                <!-- HỆ THỐNG CUSTOM RPC TỐI THƯỢNG -->
                 <div style="border: 1px dashed var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 15px; background: rgba(102, 252, 241, 0.02);">
                     <div style="color: var(--accent); font-size: 12px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Cấu hình Custom RPC (Phông bạt Profile)</div>
+                    
+                    <div class="input-group">
+                        <label>Application ID (Bắt buộc để hiện Ảnh & Nút)</label>
+                        <input type="text" name="rpc_app_id" placeholder="Lấy số ID ở Discord Developer Portal...">
+                    </div>
                     
                     <div class="input-group"><label>Tiêu đề Game</label><input type="text" name="status_text" placeholder="VD: ZaTools Premium..."></div>
                     
@@ -374,7 +378,7 @@ HTML_MAIN = HTML_HEAD + """
                         <div class="input-group" style="flex:1;"><label>Dòng chi tiết 2</label><input type="text" name="rpc_state" placeholder="VD: Trận 5/10..."></div>
                     </div>
                     
-                    <div class="input-group"><label>Link Ảnh Lớn (HTTPS)</label><input type="text" name="rpc_image" placeholder="https://domain.com/anh.jpg"></div>
+                    <div class="input-group"><label>Link Ảnh Lớn (HTTPS)</label><input type="text" name="rpc_image" placeholder="https://i.imgur.com/..."></div>
                     
                     <div style="display:flex; gap:10px;">
                         <div class="input-group" style="flex:1;"><label>Tên Nút 1</label><input type="text" name="rpc_b1_name" placeholder="VD: Facebook"></div>
@@ -742,19 +746,35 @@ def run_bot(bot_key, config, username):
             # XÂY DỰNG KHỐI CUSTOM RPC THẦN THÁNH BẰNG OP 2
             presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
             
-            status_text = config.get('status_text', '')
+            status_text = config.get('status_text', '').strip()
+            rpc_app_id = config.get('rpc_app_id', '').strip()
+            
             if status_text:
                 activity = {
                     "name": status_text,
                     "type": 0,
-                    "application_id": "1504310281625403544" # App ID chính chủ Discord để được duyệt nút
+                    "application_id": rpc_app_id if rpc_app_id else "1504310281625403544"
                 }
                 
                 if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
                 if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
                 
-                if config.get('rpc_image'):
-                    activity["assets"] = {"large_image": config.get('rpc_image'), "large_text": status_text}
+                rpc_image = config.get('rpc_image', '').strip()
+                # HACK: Tự động bắt Discord Proxy cái ảnh Imgur
+                if rpc_image.startswith('http') and rpc_app_id:
+                    try:
+                        res = requests.post(
+                            f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets",
+                            headers={"Authorization": token, "Content-Type": "application/json"},
+                            json={"urls": [rpc_image]},
+                            timeout=5
+                        )
+                        if res.status_code == 200:
+                            rpc_image = res.json()[0]['external_asset_path']
+                    except: pass
+                
+                if rpc_image:
+                    activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
                 
                 buttons = []
                 metadata_urls = []
@@ -848,6 +868,7 @@ def auto_bootloader():
                 'guild_id': doc.get('guild_id'), 
                 'channel_id': doc.get('channel_id'), 
                 'status_text': doc.get('status_text', ''),
+                'rpc_app_id': doc.get('rpc_app_id', ''),
                 'rpc_details': doc.get('rpc_details', ''),
                 'rpc_state': doc.get('rpc_state', ''),
                 'rpc_image': doc.get('rpc_image', ''),
@@ -959,6 +980,7 @@ def start():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
+        'rpc_app_id': request.form.get('rpc_app_id', '').strip(),
         'rpc_details': request.form.get('rpc_details', '').strip(),
         'rpc_state': request.form.get('rpc_state', '').strip(),
         'rpc_image': request.form.get('rpc_image', '').strip(),
@@ -1012,6 +1034,7 @@ def save_profile():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
+        'rpc_app_id': request.form.get('rpc_app_id', '').strip(),
         'rpc_details': request.form.get('rpc_details', '').strip(),
         'rpc_state': request.form.get('rpc_state', '').strip(),
         'rpc_image': request.form.get('rpc_image', '').strip(),
