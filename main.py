@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.6 - Fix Ảnh RPC & Thêm Đếm Giờ.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.7 - Ẩn App ID & Fix Giựt Cờ Stream.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -137,6 +137,7 @@ HTML_HEAD = """
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.success { background: rgba(46, 204, 113, 0.1); color: var(--success-text); border: 1px solid rgba(46, 204, 113, 0.2); }
         .msg.error { background: rgba(231, 76, 60, 0.1); color: var(--danger-text); border: 1px solid rgba(231, 76, 60, 0.2); }
+        .msg.warning { background: rgba(241, 196, 15, 0.1); color: var(--coin-color); border: 1px solid rgba(241, 196, 15, 0.3); }
         .theme-toggle-btn { background: var(--account-card); border: 1px solid var(--input-border); color: var(--text-main); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink:0;}
         .theme-toggle-btn:hover { background: var(--accent-hover); color: var(--accent); }
         @media (max-width: 600px) { .card { padding: 20px; border-radius: 16px;} .btn-flex { flex-direction: column; gap: 10px; } }
@@ -362,13 +363,9 @@ HTML_MAIN = HTML_HEAD + """
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required></div>
                 <div class="input-group"><label>ID Kênh Voice</label><input type="text" name="channel_id" required></div>
                 
+                <!-- HỆ THỐNG CUSTOM RPC TỐI THƯỢNG -->
                 <div style="border: 1px dashed var(--accent); padding: 15px; border-radius: 12px; margin-bottom: 15px; background: rgba(102, 252, 241, 0.02);">
                     <div style="color: var(--accent); font-size: 12px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Cấu hình Custom RPC (Phông bạt Profile)</div>
-                    
-                    <div class="input-group">
-                        <label>Application ID (Bắt buộc để hiện Ảnh & Nút)</label>
-                        <input type="text" name="rpc_app_id" placeholder="Lấy số ID ở Discord Developer Portal...">
-                    </div>
                     
                     <div class="input-group"><label>Tiêu đề Game</label><input type="text" name="status_text" placeholder="VD: ZaTools Premium..."></div>
                     
@@ -674,7 +671,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX ẢNH BẰNG MP:) ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -743,26 +740,24 @@ def run_bot(bot_key, config, username):
         if op == 10:
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
             
-            # XÂY DỰNG KHỐI CUSTOM RPC THẦN THÁNH BẰNG OP 2
             presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
             
             status_text = config.get('status_text', '').strip()
-            rpc_app_id = config.get('rpc_app_id', '').strip()
+            rpc_app_id = "1469298750613749934" # APP ID CỐ ĐỊNH, ĐÉO CẦN KHÁCH NHẬP
             
             if status_text:
                 activity = {
                     "name": status_text,
                     "type": 0,
-                    "application_id": rpc_app_id if rpc_app_id else "1504310281625403544",
-                    "timestamps": {"start": start_time} # 🕒 THÊM ĐẾM GIỜ Ở ĐÂY
+                    "application_id": rpc_app_id,
+                    "timestamps": {"start": start_time}
                 }
                 
                 if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
                 if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
                 
                 rpc_image = config.get('rpc_image', '').strip()
-                # 🛠️ FIX LỖI ẢNH: Thêm chữ "mp:" vào trước link trả về
-                if rpc_image.startswith('http') and rpc_app_id:
+                if rpc_image.startswith('http'):
                     try:
                         res = requests.post(
                             f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets",
@@ -838,11 +833,6 @@ def run_bot(bot_key, config, username):
                 try: ws.send(json.dumps({"op": 1, "d": last_seq}))
                 except: pass
 
-    def keep_alive_loop():
-        while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
-            time.sleep(30)
-            if ws and ws.keep_running and connected: send_voice_update(ws, init_stream=False)
-
     def start_ws():
         nonlocal ws
         if username not in user_bots or bot_key not in user_bots[username] or not user_bots[username][bot_key]['running']: return
@@ -851,7 +841,6 @@ def run_bot(bot_key, config, username):
         add_log("🚀 Khởi tạo tiến trình...")
         ws = websocket.WebSocketApp(gateway + "/?v=9&encoding=json", on_message=on_message, on_error=on_error, on_close=on_close)
         threading.Thread(target=heartbeat_loop, daemon=True).start()
-        threading.Thread(target=keep_alive_loop, daemon=True).start()
         ws.run_forever()
     start_ws()
 
@@ -869,7 +858,6 @@ def auto_bootloader():
                 'guild_id': doc.get('guild_id'), 
                 'channel_id': doc.get('channel_id'), 
                 'status_text': doc.get('status_text', ''),
-                'rpc_app_id': doc.get('rpc_app_id', ''),
                 'rpc_details': doc.get('rpc_details', ''),
                 'rpc_state': doc.get('rpc_state', ''),
                 'rpc_image': doc.get('rpc_image', ''),
@@ -981,7 +969,6 @@ def start():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
-        'rpc_app_id': request.form.get('rpc_app_id', '').strip(),
         'rpc_details': request.form.get('rpc_details', '').strip(),
         'rpc_state': request.form.get('rpc_state', '').strip(),
         'rpc_image': request.form.get('rpc_image', '').strip(),
@@ -1035,7 +1022,6 @@ def save_profile():
         'guild_id': request.form.get('guild_id', '').strip(),
         'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(),
-        'rpc_app_id': request.form.get('rpc_app_id', '').strip(),
         'rpc_details': request.form.get('rpc_details', '').strip(),
         'rpc_state': request.form.get('rpc_state', '').strip(),
         'rpc_image': request.form.get('rpc_image', '').strip(),
