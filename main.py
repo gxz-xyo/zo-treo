@@ -26,7 +26,7 @@ try:
     else:
         users_collection.update_one({"username": admin_user}, {"$set": {"max_tokens": 9999, "is_admin": True}})
         
-    print("✅ MongoDB OK! Đã kích hoạt V22.2 - Live Logs & Dynamic Theme Icons.")
+    print("✅ MongoDB OK! Đã kích hoạt V22.2 - Fix Cam/Stream Đen Thui & Xoay Vòng.")
 except Exception as e:
     print(f"💥 Lỗi DB: {e}")
 
@@ -61,14 +61,6 @@ def get_user_limit(username):
             return current_limit, time.strftime('%d/%m/%Y %H:%M', time.localtime(expiry_ts)), plan_name
     return 1, "Gói Free", "Free"
 
-def load_storage(username):
-    try:
-        data = {}
-        for doc in accounts_collection.find({"owner": username}):
-            data[doc["bot_key"]] = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
-        return data
-    except: return {}
-
 def get_saved_profiles(username):
     try: return list(saved_profiles_collection.find({"owner": username}))
     except: return []
@@ -83,7 +75,6 @@ def delete_storage_item(bot_key, username):
 
 def process_sepay_transaction(tid, amount, raw_content):
     if transactions_collection.find_one({"_id": str(tid)}): return False
-    
     normalized_content = raw_content.lower().replace(" ", "").replace("-", "").replace("_", "")
     if 'zatools' in normalized_content:
         for user in users_collection.find():
@@ -129,7 +120,7 @@ HTML_HEAD = """
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
         body { background: var(--bg-main); color: var(--text-main); overflow-x: hidden; min-height: 100vh; transition: background 0.3s, color 0.3s; }
         .card { background: var(--card-bg); backdrop-filter: blur(12px); border-radius: 20px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border-light); box-shadow: 0 8px 32px var(--shadow); transition: 0.3s;}
-        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;}
+        .card-title { color: var(--text-muted); font-size: 13px; text-transform: uppercase; font-weight: 800; margin-bottom: 20px; letter-spacing: 1px; display: flex; align-items: center; justify-content: space-between; gap: 8px;}
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; color: var(--accent); font-size: 12px; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; color: var(--text-main); font-size: 14px; outline: none; transition: 0.3s; }
@@ -153,7 +144,6 @@ HTML_HEAD = """
     </style>
 """
 
-# ================== SCRIPT UPDATE THEME ICON (CHUNG) ==================
 THEME_SCRIPT = """
     <script>
         const MOON_ICON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
@@ -162,9 +152,7 @@ THEME_SCRIPT = """
         function setInitialThemeIcon() {
             const root = document.documentElement;
             const iconBtn = document.getElementById('theme-icon');
-            if(iconBtn) {
-                iconBtn.innerHTML = root.getAttribute('data-theme') === 'light' ? SUN_ICON : MOON_ICON;
-            }
+            if(iconBtn) { iconBtn.innerHTML = root.getAttribute('data-theme') === 'light' ? SUN_ICON : MOON_ICON; }
         }
         
         function toggleTheme() {
@@ -182,7 +170,6 @@ THEME_SCRIPT = """
                 if(iconBtn) iconBtn.innerHTML = SUN_ICON;
             }
         }
-        
         document.addEventListener("DOMContentLoaded", setInitialThemeIcon);
     </script>
 """
@@ -199,10 +186,8 @@ HTML_AUTH = HTML_HEAD + """
     .divider { display: flex; align-items: center; text-align: center; color: var(--text-muted); font-size: 11px; margin: 20px 0; font-weight: 800; text-transform: uppercase; }
     .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--input-border); transition: 0.3s;}
     .divider:not(:empty)::before { margin-right: 1em; } .divider:not(:empty)::after { margin-left: 1em; }
-    
     .btn-oauth { width: 100%; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; background: #5865F2; color: #fff; text-decoration:none; margin-bottom: 15px;}
     .btn-oauth:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4); }
-    
     .switch-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); }
     .switch-link a { color: var(--accent); text-decoration: none; font-weight: 600; cursor: pointer; }
     .theme-corner { position: absolute; top: 20px; right: 20px; }
@@ -212,9 +197,7 @@ HTML_AUTH = HTML_HEAD + """
     <button class="theme-toggle-btn theme-corner" onclick="toggleTheme()"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg></button>
     <div class="card auth-container">
         <div class="logo">Za <span>Tools</span></div>
-        <div class="sub">
-            {% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}
-        </div>
+        <div class="sub">{% if mode == 'login' %}Hệ thống treo voice siêu tốc{% elif mode == 'register' %}Đăng ký thành viên mới{% else %}Khôi phục mật khẩu{% endif %}</div>
         
         {% if error %}<div class="msg error"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> {{ error }}</div>{% endif %}
         {% if success %}<div class="msg success"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {{ success }}</div>{% endif %}
@@ -225,17 +208,9 @@ HTML_AUTH = HTML_HEAD + """
             <div class="input-group"><label>Mật khẩu</label><input type="password" name="password" required placeholder="••••••••"></div>
             <button type="submit" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> ĐĂNG NHẬP</button>
         </form>
-        
         <div class="divider">Hoặc</div>
-        <a href="/login/discord" class="btn-oauth">
-            <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-            Đăng nhập bằng Discord
-        </a>
-        
-        <div class="switch-link">
-            Chưa có tài khoản? <a href="/register">Tạo ngay</a><br><br>
-            <a href="/forgot">Quên mật khẩu?</a>
-        </div>
+        <a href="/login/discord" class="btn-oauth"><svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>Đăng nhập bằng Discord</a>
+        <div class="switch-link">Chưa có tài khoản? <a href="/register">Tạo ngay</a><br><br><a href="/forgot">Quên mật khẩu?</a></div>
         
         {% elif mode == 'register' %}
         <form method="POST" action="/register">
@@ -380,32 +355,40 @@ HTML_MAIN = HTML_HEAD + """
         <div class="limit-badge"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Đang chạy: {{ running_count }}/{{ max_tokens }} Slot</div>
         <form method="POST">
             <div class="card">
-                <div class="card-title"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon></svg> Thiết lập kết nối</div>
+                <div class="card-title">
+                    <span style="display:flex; align-items:center; gap:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path></svg> Thiết lập kết nối</span>
+                </div>
                 <div class="input-group"><label>Tên gợi nhớ (Nếu lưu)</label><input type="text" name="profile_name" placeholder="Ví dụ: Acc Cày Cấp..."></div>
+                <div class="input-group"><label>Trạng thái Game (Treo status)</label><input type="text" name="status_text" placeholder="Ví dụ: Đang chơi Valorant..."></div>
                 <div class="input-group"><label>Discord Token</label><input type="text" name="token" required placeholder="Nhập Token của bạn..."></div>
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required></div>
                 <div class="input-group"><label>ID Kênh Voice</label><input type="text" name="channel_id" required></div>
                 
                 <div class="options-grid">
-                    <div class="switch-wrap"><div class="switch-label"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg> Mute</div><label class="switch"><input type="checkbox" name="mute" checked><span class="slider"></span></label></div>
-                    <div class="switch-wrap"><div class="switch-label"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg> Deaf</div><label class="switch"><input type="checkbox" name="deaf" checked><span class="slider"></span></label></div>
-                    <div class="switch-wrap"><div class="switch-label"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Video</div><label class="switch"><input type="checkbox" name="video"><span class="slider"></span></label></div>
-                    <div class="switch-wrap"><div class="switch-label"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Stream</div><label class="switch"><input type="checkbox" name="stream"><span class="slider"></span></label></div>
+                    <div class="switch-wrap"><div class="switch-label">Mute</div><label class="switch"><input type="checkbox" name="mute" checked><span class="slider"></span></label></div>
+                    <div class="switch-wrap"><div class="switch-label">Deaf</div><label class="switch"><input type="checkbox" name="deaf" checked><span class="slider"></span></label></div>
+                    <div class="switch-wrap"><div class="switch-label">Video (Cam ảo)</div><label class="switch"><input type="checkbox" name="video"><span class="slider"></span></label></div>
+                    <div class="switch-wrap"><div class="switch-label">Stream (Live ảo)</div><label class="switch"><input type="checkbox" name="stream"><span class="slider"></span></label></div>
                 </div>
 
                 <div class="btn-flex">
-                    <button type="submit" formaction="/start" class="btn btn-primary"><svg class="svg-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> CHẠY NGAY</button>
-                    <button type="submit" formaction="/save_profile" class="btn btn-success"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> LƯU LẠI</button>
+                    <button type="submit" formaction="/start" class="btn btn-primary">CHẠY NGAY</button>
+                    <button type="submit" formaction="/save_profile" class="btn btn-success">LƯU LẠI</button>
                 </div>
             </div>
         </form>
 
         <div class="card">
-            <div class="card-title"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Luồng đang chạy</div>
+            <div class="card-title">
+                <span style="display:flex; align-items:center; gap:8px;"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect></svg> Luồng đang chạy</span>
+                {% if running_count > 0 %}
+                <form method="POST" action="/stop_all" style="margin:0;"><button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 11px;">DỪNG HẾT</button></form>
+                {% endif %}
+            </div>
             {% for key, bot in bot_items %}
             <div class="account-card">
                 <div>
-                    <div class="name"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--accent); width:16px; height:16px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ bot.get('display_name', 'Đang kết nối...') }}</div>
+                    <div class="name"><svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--accent); width:16px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ bot.get('display_name', 'Đang kết nối...') }}</div>
                     <div style="font-size:11px; color:var(--success-text); margin-left: 22px;" id="status-{{ loop.index0 }}">Đang kết nối...</div>
                 </div>
                 <form method="POST" action="/stop"><input type="hidden" name="bot_key" value="{{ key }}"><button type="submit" class="btn btn-danger"><svg class="svg-icon" viewBox="0 0 24 24" style="margin:0;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button></form>
@@ -455,7 +438,7 @@ HTML_MAIN = HTML_HEAD + """
             <div class="input-group"><input type="number" id="nap_amount" placeholder="Nhập số tiền muốn nạp..." min="10000" step="10000"></div>
             <button onclick="generateNapQR()" class="btn btn-primary" style="margin-bottom:20px;">TẠO MÃ NẠP TIỀN</button>
             
-            <div id="qr_nap_area" style="display: none; text-align: center; border-top: 1px dashed var(--input-border); padding-top: 20px;">
+            <div id="qr_nap_area" style="display: none; text-align: center; border-top: 1px dashed var(--input-border); padding-top: 20px; margin-top:20px;">
                 <img id="qr_nap_img" src="" style="width: 220px; max-width: 100%; border-radius: 12px; border: 2px solid var(--coin-color);">
                 <div style="margin-top: 15px; font-size: 13px; background: var(--input-bg); padding: 12px; border-radius: 10px;">
                     <span style="color:var(--text-muted);">Nội dung nạp tiền:</span><br>
@@ -463,7 +446,6 @@ HTML_MAIN = HTML_HEAD + """
                 </div>
                 
                 <div id="payment_status" class="msg pulsing" style="display:none; margin-top:15px; background:rgba(241, 196, 15, 0.1); color:var(--coin-color); border:1px solid rgba(241, 196, 15, 0.3);">
-                    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     Đang chờ ngân hàng xử lý...
                 </div>
             </div>
@@ -530,12 +512,10 @@ HTML_MAIN = HTML_HEAD + """
         let targetLink = Array.from(links).find(l => l.getAttribute('onclick').includes(tabToLoad));
         if(targetLink) switchTab(tabToLoad, targetLink);
         
-        // Kích hoạt Live Log
         fetchLiveLogs();
         setInterval(fetchLiveLogs, 3000);
     };
     
-    // ================== HỆ THỐNG LIVE LOGS BẰNG AJAX ==================
     function fetchLiveLogs() {
         if(document.getElementById('tab-treo').classList.contains('active')) {
             fetch('/api/get_logs')
@@ -546,13 +526,10 @@ HTML_MAIN = HTML_HEAD + """
                     let newLogContent = data.log.join('\\n');
                     if (logBox.innerHTML !== newLogContent) {
                         logBox.innerHTML = newLogContent;
-                        logBox.scrollTop = logBox.scrollHeight; // Tự cuộn xuống dưới
+                        logBox.scrollTop = logBox.scrollHeight;
                     }
-                } else {
-                    logBox.innerHTML = 'Đang chờ hệ thống...';
-                }
+                } else { logBox.innerHTML = 'Đang chờ hệ thống...'; }
                 
-                // Cập nhật trạng thái từng bot (Vĩnh cửu / Mất mạng)
                 data.status.forEach((st, index) => {
                     let statusEl = document.getElementById('status-' + index);
                     if (statusEl) {
@@ -612,9 +589,7 @@ HTML_MAIN = HTML_HEAD + """
                 statusDiv.style.background = 'rgba(46, 204, 113, 0.1)';
                 statusDiv.style.color = 'var(--success-text)';
                 statusDiv.style.borderColor = 'rgba(46, 204, 113, 0.3)';
-                statusDiv.innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Nạp thành công +${diff.toLocaleString('vi-VN')} Coin!`;
-                
-                document.getElementById('wallet-display-sidebar').innerHTML = `<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> ${currentBalance.toLocaleString('vi-VN')}`;
+                statusDiv.innerHTML = `Nạp thành công +${diff.toLocaleString('vi-VN')} Coin!`;
             }
         });
     }
@@ -634,12 +609,10 @@ HTML_ADMIN = HTML_HEAD + """
 </style>
 <body>
     <button class="theme-toggle-btn" onclick="toggleTheme()" style="position: absolute; top:20px; right:20px;"><svg class="svg-icon" id="theme-icon" viewBox="0 0 24 24"></svg></button>
-    
     <div class="admin-container">
         <h2 style="color:var(--text-main); text-align:center; margin-bottom:25px; display:flex; justify-content:center; align-items:center; gap:10px;">
             <svg class="svg-icon" viewBox="0 0 24 24" style="color:var(--plan-text); width:28px; height:28px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> MẮT THẦN DANGKHOI
         </h2>
-        
         {% if msg %}<div class="msg success">{{ msg }}</div>{% endif %}
         
         <div class="stat-box">Thành viên hệ thống: <span class="stat-val">{{ stats.users }}</span></div>
@@ -665,7 +638,6 @@ HTML_ADMIN = HTML_HEAD + """
                 <button type="submit" class="btn btn-primary" style="background:var(--coin-color); color:#000; border:none;">QUÉT & ĐỒNG BỘ NGAY</button>
             </form>
         </div>
-        
         <div style="text-align:center; margin-top:20px;"><a href="/" style="color:var(--text-muted); text-decoration:none; font-weight:600;">← Trở về trang chủ</a></div>
     </div>
     """ + THEME_SCRIPT + """
@@ -673,15 +645,18 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== HÀM CHẠY LUỒNG VÀ LOGGING ==================
+# ================== HÀM CHẠY LUỒNG VÀ LOGGING (FIX AUTO-RECONNECT + FIX BOOL) ==================
 def run_bot(bot_key, config, username):
-    token = config['token']
-    guild_id = config['guild_id']
-    channel_id = config['channel_id']
-    mute = config.get('mute', True)
-    deaf = config.get('deaf', True)
-    video = config.get('video', False)
-    stream = config.get('stream', False)
+    token = config.get('token')
+    guild_id = config.get('guild_id')
+    channel_id = config.get('channel_id')
+    status_text = config.get('status_text', '')
+    
+    # CHUYỂN ĐỔI CHUẨN XÁC VỀ BOOLEAN CHO DISCORD
+    mute = str(config.get('mute', 'False')).lower() in ['true', 'on', '1']
+    deaf = str(config.get('deaf', 'False')).lower() in ['true', 'on', '1']
+    video = str(config.get('video', 'False')).lower() in ['true', 'on', '1']
+    stream = str(config.get('stream', 'False')).lower() in ['true', 'on', '1']
 
     ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
 
@@ -699,7 +674,19 @@ def run_bot(bot_key, config, username):
 
     def send_voice_update(ws_client):
         if not ws_client or not ws_client.keep_running: return
-        try: ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video, "self_stream": stream}}))
+        try: 
+            # ĐÃ CHUYỂN MUTE/DEAF/VIDEO/STREAM THÀNH BOOLEAN CHUẨN CỦA DISCORD
+            ws_client.send(json.dumps({
+                "op": 4, 
+                "d": {
+                    "guild_id": guild_id, 
+                    "channel_id": channel_id, 
+                    "self_mute": mute, 
+                    "self_deaf": deaf, 
+                    "self_video": video, 
+                    "self_stream": stream
+                }
+            }))
         except: pass
 
     def on_message(ws_client, message):
@@ -712,8 +699,20 @@ def run_bot(bot_key, config, username):
 
         if op == 10:
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-            ws_client.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"}, "compress": False}}))
+            presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
+            if status_text: presence_data["activities"].append({"name": status_text, "type": 0})
+                
+            ws_client.send(json.dumps({
+                "op": 2, 
+                "d": {
+                    "token": token, 
+                    "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"}, 
+                    "presence": presence_data,
+                    "compress": False
+                }
+            }))
             add_log("📤 Đã kết nối Gateway, đang tải dữ liệu...")
+            
         elif op == 0:
             if t == 'READY':
                 d_name = data['d']['user']['username']
@@ -773,7 +772,17 @@ def auto_bootloader():
             limit, _, _ = get_user_limit(username)
             if username not in user_bots: user_bots[username] = {}
             if len(user_bots[username]) >= limit: continue 
-            config = { 'token': doc['token'], 'guild_id': doc['guild_id'], 'channel_id': doc['channel_id'], 'mute': doc.get('mute', True), 'deaf': doc.get('deaf', True), 'video': doc.get('video', False), 'stream': doc.get('stream', False) }
+            
+            config = { 
+                'token': doc.get('token'), 
+                'guild_id': doc.get('guild_id'), 
+                'channel_id': doc.get('channel_id'), 
+                'status_text': doc.get('status_text', ''),
+                'mute': doc.get('mute'), 
+                'deaf': doc.get('deaf'), 
+                'video': doc.get('video'), 
+                'stream': doc.get('stream') 
+            }
             if bot_key not in user_bots[username]: threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
     except: pass
 auto_bootloader()
@@ -798,23 +807,17 @@ def api_get_balance():
     user = users_collection.find_one({"username": session['username']})
     return jsonify({"balance": user.get('balance', 0) if user else 0})
 
-# TÍNH NĂNG MỚI: TRẢ API LIVE LOG CHO CLIENT
 @app.route('/api/get_logs')
 def api_get_logs():
     if 'username' not in session: return jsonify({"log": [], "status": []})
     usr = session['username']
+    if usr not in user_bots or not user_bots[usr]: return jsonify({"log": [], "status": []})
     
-    if usr not in user_bots or not user_bots[usr]:
-        return jsonify({"log": [], "status": []})
-    
-    # Gom log của luồng đầu tiên (hoặc tất cả)
     active_bots = [(k, v) for k, v in user_bots[usr].items() if v.get('running', False)]
-    if not active_bots:
-        return jsonify({"log": [], "status": []})
+    if not active_bots: return jsonify({"log": [], "status": []})
         
     log_data = active_bots[0][1].get('log', [])
     status_data = [{"bot_key": k, "connected": v.get('connected', False)} for k, v in active_bots]
-    
     return jsonify({"log": log_data, "status": status_data})
 
 # ================== API MUA GÓI BẰNG COIN ==================
@@ -823,31 +826,23 @@ def buy_plan():
     if 'username' not in session: return redirect(url_for('login'))
     usr = session['username']
     plan = request.form.get('plan')
-    
     costs = {"STARTER": 20000, "PRO": 40000, "VIP": 300000}
     limits = {"STARTER": 2, "PRO": 5, "VIP": 35}
-    
     if plan not in costs: return redirect(url_for('index', tab='premium'))
     
     user_db = users_collection.find_one({"username": usr})
     current_balance = user_db.get('balance', 0)
     cost = costs[plan]
-    
     if current_balance >= cost:
         new_balance = current_balance - cost
         new_limit = max(user_db.get('max_tokens', 1), limits[plan])
-        new_expiry = int(time.time()) + 2592000 # 30 ngày
-        
-        users_collection.update_one(
-            {"username": usr}, 
-            {"$set": {"balance": new_balance, "max_tokens": new_limit, "expiry_date": new_expiry}}
-        )
-        session['flash_msg'] = f"Đã mua thành công Gói {plan} (30 Ngày)!"
+        new_expiry = int(time.time()) + 2592000
+        users_collection.update_one({"username": usr}, {"$set": {"balance": new_balance, "max_tokens": new_limit, "expiry_date": new_expiry}})
+        session['flash_msg'] = f"Đã mua thành công Gói {plan}!"
         session['flash_type'] = "success"
     else:
         session['flash_msg'] = "Ví của bạn không đủ Coin. Vui lòng nạp thêm!"
         session['flash_type'] = "error"
-        
     return redirect(url_for('index', tab='premium'))
 
 # ================== ROUTES ỨNG DỤNG CHÍNH ==================
@@ -876,12 +871,24 @@ def start():
     usr = session['username']
     max_tokens, _, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
-    bot_key = f"{request.form['guild_id']}_{request.form['channel_id']}"
+    bot_key = f"{request.form.get('guild_id')}_{request.form.get('channel_id')}"
     if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
         session['flash_msg'] = f"Gói của bạn ({max_tokens} slot) đã đầy hoặc hết hạn!"
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
-    config = {k:v for k,v in request.form.items() if k not in ['profile_name']}
+        
+    # LƯU CHÍNH XÁC BOOLEAN TỪ FORM ĐỂ DATABASE SẠCH SẼ
+    config = {
+        'token': request.form.get('token', '').strip(),
+        'guild_id': request.form.get('guild_id', '').strip(),
+        'channel_id': request.form.get('channel_id', '').strip(),
+        'status_text': request.form.get('status_text', '').strip(),
+        'mute': request.form.get('mute') == 'on',
+        'deaf': request.form.get('deaf') == 'on',
+        'video': request.form.get('video') == 'on',
+        'stream': request.form.get('stream') == 'on'
+    }
+    
     save_storage_item(bot_key, config, usr)
     if usr not in user_bots: user_bots[usr] = {}
     if bot_key in user_bots[usr]: user_bots[usr][bot_key]['running'] = False; time.sleep(0.5)
@@ -897,11 +904,12 @@ def start_saved():
     try: prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
     except: prof = None
     if prof:
-        bot_key = f"{prof['guild_id']}_{prof['channel_id']}"
+        bot_key = f"{prof.get('guild_id')}_{prof.get('channel_id')}"
         if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
             session['flash_msg'] = f"Cần Mua/Gia hạn VIP để chạy! Giới hạn: {max_tokens}"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='saved'))
+        
         config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         config['bot_key'] = bot_key
         save_storage_item(bot_key, config, usr)
@@ -909,6 +917,26 @@ def start_saved():
         if bot_key in user_bots[usr]: user_bots[usr][bot_key]['running'] = False; time.sleep(0.5)
         threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
     return redirect(url_for('index', tab='treo'))
+
+@app.route('/save_profile', methods=['POST'])
+def save_profile():
+    prof_name = request.form.get('profile_name', '').strip() or f"Config {int(time.time())}"
+    config = {
+        'profile_name': prof_name,
+        'owner': session['username'],
+        '_id': str(int(time.time())),
+        'token': request.form.get('token', '').strip(),
+        'guild_id': request.form.get('guild_id', '').strip(),
+        'channel_id': request.form.get('channel_id', '').strip(),
+        'status_text': request.form.get('status_text', '').strip(),
+        'mute': request.form.get('mute') == 'on',
+        'deaf': request.form.get('deaf') == 'on',
+        'video': request.form.get('video') == 'on',
+        'stream': request.form.get('stream') == 'on'
+    }
+    saved_profiles_collection.insert_one(config)
+    session['flash_msg'] = "Đã lưu vào Kho dữ liệu!"
+    return redirect(url_for('index', tab='saved'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -948,13 +976,6 @@ def forgot():
             return render_template_string(HTML_AUTH, mode='forgot', error="Tài khoản hoặc mã PIN không đúng!")
     return render_template_string(HTML_AUTH, mode='forgot')
 
-@app.route('/save_profile', methods=['POST'])
-def save_profile():
-    prof_name = request.form.get('profile_name', '').strip() or f"Config {int(time.time())}"
-    saved_profiles_collection.insert_one({**request.form.to_dict(), "owner": session['username'], "_id": str(int(time.time())), "profile_name": prof_name})
-    session['flash_msg'] = "Đã lưu vào Kho dữ liệu!"
-    return redirect(url_for('index', tab='saved'))
-
 @app.route('/delete_profile', methods=['POST'])
 def del_prof():
     pid = request.form.get('profile_id')
@@ -973,6 +994,18 @@ def stop():
         del user_bots[usr][bot_key]
     return redirect(url_for('index', tab='treo'))
 
+@app.route('/stop_all', methods=['POST'])
+def stop_all():
+    usr = session.get('username')
+    if usr in user_bots:
+        for bot_key in list(user_bots[usr].keys()):
+            delete_storage_item(bot_key, usr)
+            user_bots[usr][bot_key]['running'] = False
+            del user_bots[usr][bot_key]
+    session['flash_msg'] = "Đã tắt thành công toàn bộ Token!"
+    session['flash_type'] = "success"
+    return redirect(url_for('index', tab='treo'))
+
 @app.route('/login/discord')
 def login_discord(): return redirect(OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify']).authorization_url(DISCORD_AUTH_URL)[0])
 
@@ -981,7 +1014,7 @@ def cb_discord():
     discord = OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord")
     discord.fetch_token(DISCORD_TOKEN_URL, client_secret=DISCORD_CLIENT_SECRET, authorization_response=request.url.replace('http://', 'https://'))
     usr = f"{discord.get('https://discord.com/api/users/@me').json()['username']}_dc"
-    if not users_collection.find_one({"username": usr}): users_collection.insert_one({"username": usr, "oauth": "discord", "max_tokens": 1, "expiry_date": 0, "balance": 0})
+    if not users_collection.find_one({"username": usr}): users_collection.insert_one({"username": usr, "oauth": "discord", "security_pin": "discord", "max_tokens": 1, "expiry_date": 0, "balance": 0})
     session['username'] = usr
     return redirect(url_for('index'))
 
@@ -1000,14 +1033,12 @@ def admin_dashboard():
     total_bots = accounts_collection.count_documents({})
     active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
     
-    # Tính tổng tiền lưu thông
     pipeline = [{"$group": {"_id": None, "total": {"$sum": "$amount"}}}]
     res = list(transactions_collection.aggregate(pipeline))
     total_money = res[0]["total"] if res else 0
     
     stats = {"users": total_users, "bots": total_bots, "running": active_running, "total_money": total_money}
     msg = session.pop('admin_msg', None)
-    
     return render_template_string(HTML_ADMIN, stats=stats, msg=msg)
 
 @app.route('/admin_action', methods=['POST'])
