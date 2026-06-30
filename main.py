@@ -1,5 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
-import threading, json, time, requests, websocket, os, random
+import threading, json, time, requests, websocket, os
 from pymongo import MongoClient
 from requests_oauthlib import OAuth2Session
 from bson.objectid import ObjectId
@@ -284,6 +284,7 @@ TG_FLOAT_BTN = """
 HTML_LANDING = HTML_HEAD + """
 <title>ZaTools - Nền Tảng Giữ Discord Luôn Online</title>
 <style>
+    /* ====== RESET & CƠ BẢN ====== */
     .reveal { opacity: 0; transform: translateY(40px); transition: 0.8s all cubic-bezier(0.5, 0, 0, 1); }
     .reveal.active { opacity: 1; transform: translateY(0); }
 
@@ -1219,6 +1220,7 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
+    <!-- ======== TAB 1: THIẾT LẬP TREO ======== -->
     <div id="tab-treo" class="tab-content active">
         <form method="POST">
             <div class="card">
@@ -1268,8 +1270,10 @@ HTML_MAIN = HTML_HEAD + """
                 </div>
             </div>
         </form>
+        <!-- Không hiển thị danh sách bot hay terminal ở đây -->
     </div>
 
+    <!-- ======== TAB 2: ACC ĐANG HOẠT ĐỘNG ======== -->
     <div id="tab-running" class="tab-content">
         <div class="card">
             <div class="card-title">
@@ -1312,8 +1316,10 @@ HTML_MAIN = HTML_HEAD + """
                     </div>
                 </div>
 
+                <!-- Log riêng -->
                 <div class="log-container" id="log-{{ key }}">Đang tải log...</div>
 
+                <!-- Form chỉnh sửa RPC -->
                 <div class="rpc-edit-form" id="rpc-{{ key }}">
                     <form method="POST" action="/update_bot">
                         <input type="hidden" name="bot_key" value="{{ key }}">
@@ -1341,6 +1347,7 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
+    <!-- ======== TAB 3: KHO DỮ LIỆU ======== -->
     <div id="tab-saved" class="tab-content">
         <div class="card">
             <div class="card-title">Kho Dữ Liệu Cá Nhân</div>
@@ -1370,6 +1377,7 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
+    <!-- ======== TAB 4: NẠP & MUA GÓI ======== -->
     <div id="tab-premium" class="tab-content">
         <div class="tab-header" style="justify-content: center; gap: 6px;">
             <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
@@ -1455,12 +1463,14 @@ HTML_MAIN = HTML_HEAD + """
         document.getElementById('btn-' + sub).classList.add('active');
     }
 
+    // Toggle log container
     function toggleLog(botKey) {
         const logEl = document.getElementById('log-' + botKey);
         if (logEl.classList.contains('open')) {
             logEl.classList.remove('open');
         } else {
             logEl.classList.add('open');
+            // Load log từ API
             fetch('/api/get_logs?bot_key=' + botKey)
                 .then(r => r.json())
                 .then(data => {
@@ -1475,10 +1485,16 @@ HTML_MAIN = HTML_HEAD + """
         }
     }
 
+    // Toggle RPC edit form
     function toggleRPC(botKey) {
         const form = document.getElementById('rpc-' + botKey);
         form.classList.toggle('open');
     }
+
+    // Tự động load log cho các acc đang mở khi load trang (nếu có)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Không tự động mở log khi tải trang
+    });
 
     let checkPaymentInterval;
     let currentBalance = {{ balance }};
@@ -1507,6 +1523,7 @@ HTML_MAIN = HTML_HEAD + """
         });
     }
 
+    // Xử lý active tab từ URL hoặc localStorage
     window.onload = () => {
         let reqTab = '{{ active_tab }}';
         let tabToLoad = reqTab !== 'None' ? reqTab : (localStorage.getItem('za_active_tab') || 'treo');
@@ -1576,7 +1593,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== BOT LOGIC CẢI TIẾN ==================
+# ================== BOT LOGIC (giữ nguyên) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -1585,16 +1602,15 @@ def run_bot(bot_key, config, username):
     deaf = str(config.get('deaf', 'False')).lower() in ['true', 'on', '1']
     video = str(config.get('video', 'False')).lower() in ['true', 'on', '1']
     stream = str(config.get('stream', 'False')).lower() in ['true', 'on', '1']
+    ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
     start_time = int(time.time() * 1000)
-
-    if username not in user_bots:
-        user_bots[username] = {}
-        
+    if username not in user_bots: user_bots[username] = {}
     user_bots[username][bot_key] = {
         'connected': False,
         'log': [],
         'running': True,
         'display_name': 'Đang kết nối...',
+        # Lưu lại config để hiển thị trong form RPC
         'status_text': config.get('status_text', ''),
         'rpc_details': config.get('rpc_details', ''),
         'rpc_state': config.get('rpc_state', ''),
@@ -1602,320 +1618,102 @@ def run_bot(bot_key, config, username):
         'rpc_b1_name': config.get('rpc_b1_name', ''),
         'rpc_b1_url': config.get('rpc_b1_url', ''),
         'rpc_b2_name': config.get('rpc_b2_name', ''),
-        'rpc_b2_url': config.get('rpc_b2_url', ''),
-        'ws': None,
-        'voice_ws': None
+        'rpc_b2_url': config.get('rpc_b2_url', '')
     }
-
-    bot_state = user_bots[username][bot_key]
-
     def add_log(msg):
         if username in user_bots and bot_key in user_bots[username]:
             timestamp = time.strftime('%H:%M:%S')
-            bot_state['log'].append(f"[{timestamp}] {msg}")
-            if len(bot_state['log']) > 50:
-                bot_state['log'] = bot_state['log'][-50:]
-
+            user_bots[username][bot_key]['log'].append(f"[{timestamp}] {msg}")
+            if len(user_bots[username][bot_key]['log']) > 50: user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
     def update_status(st):
-        if username in user_bots and bot_key in user_bots[username]:
-            bot_state['connected'] = st
-
+        if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
     def send_voice_update(ws_client, init_stream=False):
-        if not ws_client or not ws_client.keep_running:
-            return
+        if not ws_client or not ws_client.keep_running: return
         try:
-            ws_client.send(json.dumps({
-                "op": 4,
-                "d": {
-                    "guild_id": guild_id,
-                    "channel_id": channel_id,
-                    "self_mute": mute,
-                    "self_deaf": deaf,
-                    "self_video": video
-                }
-            }))
+            ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video}}))
             if stream and init_stream:
                 def fire_stream():
                     if ws_client and ws_client.keep_running:
                         try:
-                            ws_client.send(json.dumps({
-                                "op": 18,
-                                "d": {
-                                    "type": "guild",
-                                    "guild_id": guild_id,
-                                    "channel_id": channel_id,
-                                    "preferred_region": None
-                                }
-                            }))
+                            ws_client.send(json.dumps({"op": 18, "d": {"type": "guild", "guild_id": guild_id, "channel_id": channel_id, "preferred_region": None}}))
                             add_log("🔴 Đã bung cờ Đang Trực Tiếp (Live ảo)!")
-                        except:
-                            pass
+                        except: pass
                 threading.Timer(1.5, fire_stream).start()
-        except:
-            pass
-
-    stop_event = threading.Event()
-
-    def connect_to_voice(voice_server_info):
-        endpoint = voice_server_info['endpoint']
-        voice_token = voice_server_info['token']
-        user_id = voice_server_info['user_id']
-        session_id = voice_server_info['session_id']
-
-        add_log(f"🔊 Đang kết nối Voice Gateway...")
-        voice_ws = websocket.WebSocketApp(
-            f"wss://{endpoint}/?v=4",
-            on_message=lambda ws, msg: on_voice_message(ws, msg, user_id),
-            on_error=lambda ws, err: add_log(f"💥 Lỗi Voice WS: {err}"),
-            on_close=lambda ws, code, msg: add_log(f"🔌 Mất kết nối Voice")
-        )
-        bot_state['voice_ws'] = voice_ws
-
-        def send_identify():
-            try:
-                voice_ws.send(json.dumps({
-                    "op": 0,
-                    "d": {
-                        "server_id": guild_id,
-                        "user_id": user_id,
-                        "session_id": session_id,
-                        "token": voice_token
-                    }
-                }))
-            except:
-                pass
-
-        threading.Thread(target=lambda: voice_ws.run_forever(ping_interval=30, ping_timeout=10), daemon=True).start()
-        time.sleep(1)
-        send_identify()
-
-    def on_voice_message(ws, message, user_id):
-        try:
-            data = json.loads(message)
-        except:
-            return
-        op = data.get('op')
-        if op == 2:  # Ready
-            ssrc = data['d']['ssrc']
-            add_log("✅ Voice Gateway sẵn sàng!")
-            bot_state['ssrc'] = ssrc
-            v_heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-
-            def voice_heartbeat():
-                while bot_state.get('running') and bot_state.get('voice_ws') == ws and not stop_event.is_set():
-                    if stop_event.wait(v_heartbeat_interval):
-                        break
+        except: pass
+    def on_message(ws_client, message):
+        nonlocal last_seq, connected, heartbeat_interval
+        try: data = json.loads(message)
+        except: return
+        last_seq = data.get('s', last_seq)
+        op = data.get('op'); t = data.get('t')
+        if op == 10:
+            heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+            presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
+            status_text = config.get('status_text', '').strip()
+            rpc_app_id = "1469298750613749934"
+            if status_text:
+                activity = {"name": status_text, "type": 0, "application_id": rpc_app_id, "timestamps": {"start": start_time}}
+                if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
+                if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
+                rpc_image = config.get('rpc_image', '').strip()
+                if rpc_image.startswith('http'):
                     try:
-                        ws.send(json.dumps({"op": 3, "d": int(time.time() * 1000)}))
-                    except:
-                        break
-            
-            threading.Thread(target=voice_heartbeat, daemon=True).start()
-            try:
-                ws.send(json.dumps({"op": 5, "d": {"speaking": 0, "delay": 0, "ssrc": ssrc}}))
-            except:
-                pass
-
-        elif op == 9:
-            add_log("⚠️ Voice server yêu cầu kết nối lại...")
-            ws.close()
-
-    rpc_image_cache = {}
-
-    time.sleep(random.uniform(0.5, 3.0))
-
-    while bot_state['running']:
-        gateway = "wss://gateway.discord.gg"
-        stop_event.clear()
-        
-        ws = None
-        last_seq = None
-        heartbeat_interval = 41.25
-        connected = False
-
-        def on_message(ws_client, message):
-            nonlocal last_seq, connected, heartbeat_interval
-            try:
-                data = json.loads(message)
-            except:
-                return
-            last_seq = data.get('s', last_seq)
-            op = data.get('op')
-            t = data.get('t')
-
-            if op == 10:
-                heartbeat_interval = data['d']['heartbeat_interval'] / 1000
-                presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
-                status_text = config.get('status_text', '').strip()
-                rpc_app_id = "1469298750613749934"
-
-                if status_text:
-                    activity = {
-                        "name": status_text,
-                        "type": 0,
-                        "application_id": rpc_app_id,
-                        "timestamps": {"start": start_time}
-                    }
-                    if config.get('rpc_details'):
-                        activity["details"] = config.get('rpc_details')
-                    if config.get('rpc_state'):
-                        activity["state"] = config.get('rpc_state')
-
-                    rpc_image = config.get('rpc_image', '').strip()
-                    if rpc_image.startswith('http'):
-                        if rpc_image in rpc_image_cache:
-                            rpc_image = rpc_image_cache[rpc_image]
-                        else:
-                            try:
-                                res = requests.post(
-                                    f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets",
-                                    headers={"Authorization": token, "Content-Type": "application/json"},
-                                    json={"urls": [rpc_image]},
-                                    timeout=5
-                                )
-                                if res.status_code == 200:
-                                    rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
-                                    rpc_image_cache[rpc_image] = rpc_image
-                            except Exception:
-                                pass
-
-                    if rpc_image:
-                        activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
-
-                    buttons, metadata_urls = [], []
-                    if config.get('rpc_b1_name') and config.get('rpc_b1_url'):
-                        buttons.append(config.get('rpc_b1_name'))
-                        metadata_urls.append(config.get('rpc_b1_url'))
-                    if config.get('rpc_b2_name') and config.get('rpc_b2_url'):
-                        buttons.append(config.get('rpc_b2_name'))
-                        metadata_urls.append(config.get('rpc_b2_url'))
-                    if buttons:
-                        activity["buttons"] = buttons
-                        activity["metadata"] = {"button_urls": metadata_urls}
-
-                    presence_data["activities"].append(activity)
-                    add_log("🎨 Gắn Custom RPC thành công!")
-
-                try:
-                    ws_client.send(json.dumps({
-                        "op": 2,
-                        "d": {
-                            "token": token,
-                            "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"},
-                            "presence": presence_data,
-                            "compress": False
-                        }
-                    }))
-                except:
-                    pass
-                add_log("📤 Đã kết nối Gateway...")
-
-            elif op == 0:
-                if t == 'READY':
-                    d_name = data['d']['user']['username']
-                    bot_state['display_name'] = d_name
-                    add_log(f"🎯 Đăng nhập thành công: {d_name}")
-                    ws_client.session_id = data['d']['session_id']
-                    ws_client.user_id = data['d']['user']['id']
+                        res = requests.post(f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets", headers={"Authorization": token, "Content-Type": "application/json"}, json={"urls": [rpc_image]}, timeout=5)
+                        if res.status_code == 200: rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
+                    except: pass
+                if rpc_image: activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
+                buttons, metadata_urls = [], []
+                if config.get('rpc_b1_name') and config.get('rpc_b1_url'):
+                    buttons.append(config.get('rpc_b1_name')); metadata_urls.append(config.get('rpc_b1_url'))
+                if config.get('rpc_b2_name') and config.get('rpc_b2_url'):
+                    buttons.append(config.get('rpc_b2_name')); metadata_urls.append(config.get('rpc_b2_url'))
+                if buttons:
+                    activity["buttons"] = buttons
+                    activity["metadata"] = {"button_urls": metadata_urls}
+                presence_data["activities"].append(activity)
+                add_log("🎨 Gắn khối Custom RPC thành công!")
+            ws_client.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"}, "presence": presence_data, "compress": False}}))
+            add_log("📤 Đã kết nối Gateway, đang tải dữ liệu...")
+        elif op == 0:
+            if t == 'READY':
+                d_name = data['d']['user']['username']
+                if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['display_name'] = d_name
+                add_log(f"🎯 Đăng nhập thành công: {d_name}")
+                send_voice_update(ws_client, init_stream=True)
+            elif t == 'VOICE_STATE_UPDATE':
+                d = data['d']
+                if d.get('channel_id') == channel_id and not connected:
+                    connected = True; update_status(True)
+                    add_log("✅ Đã tham gia phòng thoại vĩnh cửu!")
+                elif d.get('channel_id') is None and connected:
+                    connected = False; update_status(False)
+                    add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
                     send_voice_update(ws_client, init_stream=True)
-
-                elif t == 'VOICE_SERVER_UPDATE':
-                    voice_info = {
-                        'endpoint': data['d']['endpoint'],
-                        'token': data['d']['token'],
-                        'user_id': ws_client.user_id,
-                        'session_id': ws_client.session_id
-                    }
-                    if bot_state.get('voice_ws'):
-                        try:
-                            bot_state['voice_ws'].close()
-                        except:
-                            pass
-                    connect_to_voice(voice_info)
-
-                elif t == 'VOICE_STATE_UPDATE':
-                    d = data['d']
-                    if d.get('channel_id') == channel_id and not connected:
-                        connected = True
-                        update_status(True)
-                        add_log("✅ Đã tham gia phòng thoại vĩnh cửu!")
-                    elif d.get('channel_id') is None and connected:
-                        connected = False
-                        update_status(False)
-                        add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
-                        send_voice_update(ws_client, init_stream=True)
-
-            elif op == 9:
-                if data.get('d') == False:
-                    add_log("❌ Token không hợp lệ hoặc đã hết hạn! Dừng bot.")
-                    bot_state['running'] = False
-                    ws_client.close()
-                else:
-                    add_log("🔄 Session hết hạn, đang reconnect...")
-                    ws_client.close()
-
-        def on_close(ws_client, code, msg):
-            nonlocal connected
-            if connected:
-                connected = False
-                update_status(False)
-            add_log(f"🔌 Mất kết nối! Đang khôi phục...")
-            stop_event.set()
-            if bot_state.get('voice_ws'):
-                try:
-                    bot_state['voice_ws'].close()
-                except:
-                    pass
-                bot_state['voice_ws'] = None
-
-        def on_error(ws_client, error):
-            if "Connection closed" not in str(error):
-                pass
-
-        def heartbeat_loop():
-            while bot_state['running'] and ws and ws.keep_running and not stop_event.is_set():
-                if stop_event.wait(heartbeat_interval):
-                    break
-                try:
-                    if ws.keep_running:
-                        ws.send(json.dumps({"op": 1, "d": last_seq}))
-                except:
-                    pass
-
-        ws = websocket.WebSocketApp(
-            gateway + "/?v=9&encoding=json",
-            on_message=on_message,
-            on_error=on_error,
-            on_close=on_close
-        )
-        
-        bot_state['ws'] = ws
-
-        hb_thread = threading.Thread(target=heartbeat_loop, daemon=True)
-        hb_thread.start()
-
-        ws.run_forever(ping_interval=30, ping_timeout=10)
-
-        if not bot_state['running']:
-            break
-            
-        stop_event.set()
-        time.sleep(random.uniform(4.0, 7.0))
-
-    stop_event.set()
-    if bot_state.get('voice_ws'):
-        try:
-            bot_state['voice_ws'].close()
-        except:
-            pass
-    if bot_state.get('ws'):
-        try:
-            bot_state['ws'].close()
-        except:
-            pass
-            
-    add_log("🛑 Bot đã dừng hoàn toàn.")
-    bot_state['running'] = False
+        elif op == 9: ws_client.close()
+    def on_close(ws_client, code, msg):
+        nonlocal connected
+        if connected: connected = False; update_status(False)
+        add_log("🔌 Mất kết nối! Tự động thử lại sau 5s...")
+        time.sleep(5)
+        if username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']: start_ws()
+    def on_error(ws_client, error):
+        if "Connection closed" not in str(error): add_log(f"💥 Lỗi: {error}")
+    def heartbeat_loop():
+        while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
+            time.sleep(heartbeat_interval)
+            if ws and ws.keep_running:
+                try: ws.send(json.dumps({"op": 1, "d": last_seq}))
+                except: pass
+    def start_ws():
+        nonlocal ws
+        if username not in user_bots or bot_key not in user_bots[username] or not user_bots[username][bot_key]['running']: return
+        try: gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
+        except: time.sleep(5); start_ws(); return
+        add_log("🚀 Khởi tạo tiến trình...")
+        ws = websocket.WebSocketApp(gateway + "/?v=9&encoding=json", on_message=on_message, on_error=on_error, on_close=on_close)
+        threading.Thread(target=heartbeat_loop, daemon=True).start()
+        ws.run_forever()
+    start_ws()
 
 def auto_bootloader():
     try:
@@ -1924,10 +1722,7 @@ def auto_bootloader():
             if not username or not bot_key: continue
             limit, _, _ = get_user_limit(username)
             if username not in user_bots: user_bots[username] = {}
-            if bot_key in user_bots[username] and user_bots[username][bot_key].get('running', False):
-                continue
-            if len([k for k,v in user_bots[username].items() if v.get('running', False)]) >= limit:
-                continue
+            if len(user_bots[username]) >= limit: continue
             config = {
                 'token': doc.get('token'), 'guild_id': doc.get('guild_id'), 'channel_id': doc.get('channel_id'),
                 'status_text': doc.get('status_text', ''), 'rpc_details': doc.get('rpc_details', ''), 'rpc_state': doc.get('rpc_state', ''),
@@ -1935,11 +1730,8 @@ def auto_bootloader():
                 'rpc_b2_name': doc.get('rpc_b2_name', ''), 'rpc_b2_url': doc.get('rpc_b2_url', ''),
                 'mute': doc.get('mute'), 'deaf': doc.get('deaf'), 'video': doc.get('video'), 'stream': doc.get('stream')
             }
-            if bot_key in user_bots[username]:
-                del user_bots[username][bot_key]
-            threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
-    except:
-        pass
+            if bot_key not in user_bots[username]: threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
+    except: pass
 auto_bootloader()
 
 # ================== ROUTES ==================
@@ -1969,6 +1761,7 @@ def api_get_logs():
     if bot_key and usr in user_bots and bot_key in user_bots[usr]:
         bot = user_bots[usr][bot_key]
         return jsonify({"log": bot.get('log', []), "connected": bot.get('connected', False)})
+    # Nếu không có bot_key, trả về log của bot đầu tiên (tương thích)
     if usr in user_bots and user_bots[usr]:
         first_key = next(iter(user_bots[usr]))
         bot = user_bots[usr][first_key]
@@ -2026,26 +1819,17 @@ def start():
     if 'username' not in session: return redirect(url_for('index'))
     usr = session['username']
     max_tokens, _, _ = get_user_limit(usr)
-
+    current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
+    
     token = request.form.get('token', '').strip()
     token_suffix = token[-10:] if len(token) > 10 else token
     bot_key = f"{token_suffix}_{request.form.get('guild_id')}_{request.form.get('channel_id')}"
-
-    if usr in user_bots and bot_key in user_bots[usr]:
-        if user_bots[usr][bot_key].get('running', False):
-            session['flash_msg'] = "Tài khoản này đang được treo rồi!"
-            session['flash_type'] = "success"
-            return redirect(url_for('index', tab='treo'))
-        else:
-            del user_bots[usr][bot_key]
-            delete_storage_item(bot_key, usr)
-
-    current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
-    if current_running >= max_tokens:
+    
+    if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
         session['flash_msg'] = f"Gói của bạn ({max_tokens} slot) đã đầy hoặc hết hạn!"
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
-
+        
     config = {
         'token': token, 'guild_id': request.form.get('guild_id', '').strip(), 'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(), 'rpc_details': request.form.get('rpc_details', '').strip(), 'rpc_state': request.form.get('rpc_state', '').strip(),
@@ -2053,50 +1837,61 @@ def start():
         'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(), 'rpc_b2_url': request.form.get('rpc_b2_url', '').strip(),
         'mute': request.form.get('mute') == 'on', 'deaf': request.form.get('deaf') == 'on', 'video': request.form.get('video') == 'on', 'stream': request.form.get('stream') == 'on'
     }
-
+    
     save_storage_item(bot_key, config, usr)
+    
+    if usr not in user_bots: user_bots[usr] = {}
+    if bot_key in user_bots[usr]: user_bots[usr][bot_key]['running'] = False; time.sleep(0.5)
+    
     threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/start_saved', methods=['POST'])
 def start_saved():
     usr = session.get('username')
-    if not usr: return redirect(url_for('index'))
+    if not usr:
+        return redirect(url_for('index'))
+        
     max_tokens, _, _ = get_user_limit(usr)
+    current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     prof_id = request.form.get('profile_id')
+    
     try:
         prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
     except:
         prof = None
+        
     if prof:
         token = prof.get('token', '').strip()
         token_suffix = token[-10:] if len(token) > 10 else token
         bot_key = f"{token_suffix}_{prof.get('guild_id')}_{prof.get('channel_id')}"
-
-        if usr in user_bots and bot_key in user_bots[usr]:
-            if user_bots[usr][bot_key].get('running', False):
-                session['flash_msg'] = "Tài khoản này đã được treo rồi!"
-                session['flash_type'] = "success"
-                return redirect(url_for('index', tab='saved'))
-            else:
-                del user_bots[usr][bot_key]
-                delete_storage_item(bot_key, usr)
-
-        current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
-        if current_running >= max_tokens:
+        
+        if bot_key not in user_bots.get(usr, {}) and current_running >= max_tokens:
             session['flash_msg'] = f"Bạn đã dùng hết {max_tokens} slot. Vui lòng nâng cấp gói để treo thêm!"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='saved'))
-
+            
+        if bot_key in user_bots.get(usr, {}):
+            session['flash_msg'] = "Tài khoản này đã được treo rồi!"
+            session['flash_type'] = "success"
+            return redirect(url_for('index', tab='treo'))
+            
         config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         config['bot_key'] = bot_key
         save_storage_item(bot_key, config, usr)
+        
+        if usr not in user_bots: user_bots[usr] = {}
+        if bot_key in user_bots[usr]:
+            user_bots[usr][bot_key]['running'] = False
+            time.sleep(0.5)
+            
         threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
         session['flash_msg'] = "Đã bắt đầu treo tài khoản từ kho!"
         session['flash_type'] = "success"
     else:
         session['flash_msg'] = "Không tìm thấy cấu hình!"
         session['flash_type'] = "error"
+        
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/save_profile', methods=['POST'])
@@ -2137,11 +1932,6 @@ def stop():
     delete_storage_item(bot_key, usr)
     if usr in user_bots and bot_key in user_bots[usr]:
         user_bots[usr][bot_key]['running'] = False
-        if 'ws' in user_bots[usr][bot_key]:
-            try:
-                user_bots[usr][bot_key]['ws'].close()
-            except:
-                pass
         del user_bots[usr][bot_key]
     return redirect(url_for('index', tab='running'))
 
@@ -2152,11 +1942,6 @@ def stop_all():
         for bot_key in list(user_bots[usr].keys()):
             delete_storage_item(bot_key, usr)
             user_bots[usr][bot_key]['running'] = False
-            if 'ws' in user_bots[usr][bot_key]:
-                try:
-                    user_bots[usr][bot_key]['ws'].close()
-                except:
-                    pass
             del user_bots[usr][bot_key]
     session['flash_msg'] = "Đã tắt thành công toàn bộ Token!"
     session['flash_type'] = "success"
@@ -2211,6 +1996,7 @@ def update_bot():
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='running'))
     
+    # Lấy config mới từ form
     new_config = {
         'status_text': request.form.get('status_text', '').strip(),
         'rpc_details': request.form.get('rpc_details', '').strip(),
@@ -2221,27 +2007,28 @@ def update_bot():
         'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(),
         'rpc_b2_url': request.form.get('rpc_b2_url', '').strip()
     }
+    # Lấy config hiện tại từ DB để giữ token, guild_id, channel_id, mute, deaf, video, stream
     doc = accounts_collection.find_one({"bot_key": bot_key, "owner": usr})
     if not doc:
         session['flash_msg'] = "Không tìm thấy cấu hình trong DB!"
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='running'))
     
+    # Cập nhật config mới
     updated_config = {**doc, **new_config}
+    # Xóa các trường không cần thiết
     for key in ['_id', 'owner', 'bot_key']:
         updated_config.pop(key, None)
+    # Lưu vào DB
     save_storage_item(bot_key, updated_config, usr)
     
+    # Dừng bot hiện tại
     if bot_key in user_bots[usr]:
         user_bots[usr][bot_key]['running'] = False
-        if 'ws' in user_bots[usr][bot_key]:
-            try:
-                user_bots[usr][bot_key]['ws'].close()
-            except:
-                pass
         time.sleep(0.5)
         del user_bots[usr][bot_key]
     
+    # Khởi động lại bot
     threading.Thread(target=run_bot, args=(bot_key, updated_config, usr), daemon=True).start()
     session['flash_msg'] = "Đã cập nhật RPC và khởi động lại bot!"
     session['flash_type'] = "success"
