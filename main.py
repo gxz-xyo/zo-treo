@@ -1,5 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
-import threading, json, time, requests, websocket, os
+import threading, json, time, requests, websocket, os, random
 from pymongo import MongoClient
 from requests_oauthlib import OAuth2Session
 from bson.objectid import ObjectId
@@ -1219,7 +1219,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- ======== TAB 1: THIẾT LẬP TREO ======== -->
     <div id="tab-treo" class="tab-content active">
         <form method="POST">
             <div class="card">
@@ -1271,7 +1270,6 @@ HTML_MAIN = HTML_HEAD + """
         </form>
     </div>
 
-    <!-- ======== TAB 2: ACC ĐANG HOẠT ĐỘNG ======== -->
     <div id="tab-running" class="tab-content">
         <div class="card">
             <div class="card-title">
@@ -1314,10 +1312,8 @@ HTML_MAIN = HTML_HEAD + """
                     </div>
                 </div>
 
-                <!-- Log riêng -->
                 <div class="log-container" id="log-{{ key }}">Đang tải log...</div>
 
-                <!-- Form chỉnh sửa RPC -->
                 <div class="rpc-edit-form" id="rpc-{{ key }}">
                     <form method="POST" action="/update_bot">
                         <input type="hidden" name="bot_key" value="{{ key }}">
@@ -1345,7 +1341,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- ======== TAB 3: KHO DỮ LIỆU ======== -->
     <div id="tab-saved" class="tab-content">
         <div class="card">
             <div class="card-title">Kho Dữ Liệu Cá Nhân</div>
@@ -1375,7 +1370,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- ======== TAB 4: NẠP & MUA GÓI ======== -->
     <div id="tab-premium" class="tab-content">
         <div class="tab-header" style="justify-content: center; gap: 6px;">
             <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
@@ -1595,6 +1589,7 @@ def run_bot(bot_key, config, username):
 
     if username not in user_bots:
         user_bots[username] = {}
+        
     user_bots[username][bot_key] = {
         'connected': False,
         'log': [],
@@ -1612,16 +1607,18 @@ def run_bot(bot_key, config, username):
         'voice_ws': None
     }
 
+    bot_state = user_bots[username][bot_key]
+
     def add_log(msg):
         if username in user_bots and bot_key in user_bots[username]:
             timestamp = time.strftime('%H:%M:%S')
-            user_bots[username][bot_key]['log'].append(f"[{timestamp}] {msg}")
-            if len(user_bots[username][bot_key]['log']) > 50:
-                user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
+            bot_state['log'].append(f"[{timestamp}] {msg}")
+            if len(bot_state['log']) > 50:
+                bot_state['log'] = bot_state['log'][-50:]
 
     def update_status(st):
         if username in user_bots and bot_key in user_bots[username]:
-            user_bots[username][bot_key]['connected'] = st
+            bot_state['connected'] = st
 
     def send_voice_update(ws_client, init_stream=False):
         if not ws_client or not ws_client.keep_running:
@@ -1657,33 +1654,38 @@ def run_bot(bot_key, config, username):
         except:
             pass
 
+    stop_event = threading.Event()
+
     def connect_to_voice(voice_server_info):
         endpoint = voice_server_info['endpoint']
         voice_token = voice_server_info['token']
         user_id = voice_server_info['user_id']
         session_id = voice_server_info['session_id']
 
-        add_log(f"🔊 Đang kết nối Voice Gateway: {endpoint}")
+        add_log(f"🔊 Đang kết nối Voice Gateway...")
         voice_ws = websocket.WebSocketApp(
             f"wss://{endpoint}/?v=4",
             on_message=lambda ws, msg: on_voice_message(ws, msg, user_id),
             on_error=lambda ws, err: add_log(f"💥 Lỗi Voice WS: {err}"),
-            on_close=lambda ws, code, msg: add_log(f"🔌 Mất kết nối Voice (code {code})")
+            on_close=lambda ws, code, msg: add_log(f"🔌 Mất kết nối Voice")
         )
-        user_bots[username][bot_key]['voice_ws'] = voice_ws
+        bot_state['voice_ws'] = voice_ws
 
         def send_identify():
-            voice_ws.send(json.dumps({
-                "op": 0,
-                "d": {
-                    "server_id": guild_id,
-                    "user_id": user_id,
-                    "session_id": session_id,
-                    "token": voice_token
-                }
-            }))
+            try:
+                voice_ws.send(json.dumps({
+                    "op": 0,
+                    "d": {
+                        "server_id": guild_id,
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "token": voice_token
+                    }
+                }))
+            except:
+                pass
 
-        threading.Thread(target=lambda: voice_ws.run_forever(ping_interval=30, ping_timeout=10)).start()
+        threading.Thread(target=lambda: voice_ws.run_forever(ping_interval=30, ping_timeout=10), daemon=True).start()
         time.sleep(1)
         send_identify()
 
@@ -1696,40 +1698,39 @@ def run_bot(bot_key, config, username):
         if op == 2:  # Ready
             ssrc = data['d']['ssrc']
             add_log("✅ Voice Gateway sẵn sàng!")
-            user_bots[username][bot_key]['ssrc'] = ssrc
-            heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+            bot_state['ssrc'] = ssrc
+            v_heartbeat_interval = data['d']['heartbeat_interval'] / 1000
 
             def voice_heartbeat():
-                while user_bots[username][bot_key].get('running') and \
-                      user_bots[username][bot_key].get('voice_ws'):
-                    time.sleep(heartbeat_interval)
+                while bot_state.get('running') and bot_state.get('voice_ws') == ws and not stop_event.is_set():
+                    if stop_event.wait(v_heartbeat_interval):
+                        break
                     try:
                         ws.send(json.dumps({"op": 3, "d": int(time.time() * 1000)}))
                     except:
                         break
+            
             threading.Thread(target=voice_heartbeat, daemon=True).start()
+            try:
+                ws.send(json.dumps({"op": 5, "d": {"speaking": 0, "delay": 0, "ssrc": ssrc}}))
+            except:
+                pass
 
-            ws.send(json.dumps({"op": 5, "d": {"speaking": 0, "delay": 0, "ssrc": ssrc}}))
-
-        elif op == 8:
-            pass
         elif op == 9:
-            add_log("⚠️ Voice server yêu cầu ngắt kết nối, sẽ tự động kết nối lại...")
+            add_log("⚠️ Voice server yêu cầu kết nối lại...")
             ws.close()
 
     rpc_image_cache = {}
 
-    while user_bots[username][bot_key]['running']:
-        try:
-            gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
-        except Exception as e:
-            add_log(f"Không lấy được gateway: {e}")
-            time.sleep(5)
-            continue
+    time.sleep(random.uniform(0.5, 3.0))
 
+    while bot_state['running']:
+        gateway = "wss://gateway.discord.gg"
+        stop_event.clear()
+        
         ws = None
         last_seq = None
-        heartbeat_interval = 41250
+        heartbeat_interval = 41.25
         connected = False
 
         def on_message(ws_client, message):
@@ -1775,10 +1776,8 @@ def run_bot(bot_key, config, username):
                                 if res.status_code == 200:
                                     rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
                                     rpc_image_cache[rpc_image] = rpc_image
-                                else:
-                                    add_log(f"⚠️ Upload ảnh RPC thất bại ({res.status_code})")
-                            except Exception as e:
-                                add_log(f"Lỗi upload ảnh RPC: {e}")
+                            except Exception:
+                                pass
 
                     if rpc_image:
                         activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
@@ -1797,22 +1796,24 @@ def run_bot(bot_key, config, username):
                     presence_data["activities"].append(activity)
                     add_log("🎨 Gắn Custom RPC thành công!")
 
-                ws_client.send(json.dumps({
-                    "op": 2,
-                    "d": {
-                        "token": token,
-                        "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"},
-                        "presence": presence_data,
-                        "compress": False
-                    }
-                }))
-                add_log("📤 Đã kết nối Gateway, đang tải dữ liệu...")
+                try:
+                    ws_client.send(json.dumps({
+                        "op": 2,
+                        "d": {
+                            "token": token,
+                            "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"},
+                            "presence": presence_data,
+                            "compress": False
+                        }
+                    }))
+                except:
+                    pass
+                add_log("📤 Đã kết nối Gateway...")
 
             elif op == 0:
                 if t == 'READY':
                     d_name = data['d']['user']['username']
-                    if username in user_bots and bot_key in user_bots[username]:
-                        user_bots[username][bot_key]['display_name'] = d_name
+                    bot_state['display_name'] = d_name
                     add_log(f"🎯 Đăng nhập thành công: {d_name}")
                     ws_client.session_id = data['d']['session_id']
                     ws_client.user_id = data['d']['user']['id']
@@ -1825,9 +1826,9 @@ def run_bot(bot_key, config, username):
                         'user_id': ws_client.user_id,
                         'session_id': ws_client.session_id
                     }
-                    if user_bots[username][bot_key].get('voice_ws'):
+                    if bot_state.get('voice_ws'):
                         try:
-                            user_bots[username][bot_key]['voice_ws'].close()
+                            bot_state['voice_ws'].close()
                         except:
                             pass
                     connect_to_voice(voice_info)
@@ -1847,11 +1848,10 @@ def run_bot(bot_key, config, username):
             elif op == 9:
                 if data.get('d') == False:
                     add_log("❌ Token không hợp lệ hoặc đã hết hạn! Dừng bot.")
-                    if username in user_bots and bot_key in user_bots[username]:
-                        user_bots[username][bot_key]['running'] = False
+                    bot_state['running'] = False
                     ws_client.close()
                 else:
-                    add_log("🔄 Session không hợp lệ, đang reconnect...")
+                    add_log("🔄 Session hết hạn, đang reconnect...")
                     ws_client.close()
 
         def on_close(ws_client, code, msg):
@@ -1859,22 +1859,23 @@ def run_bot(bot_key, config, username):
             if connected:
                 connected = False
                 update_status(False)
-            add_log(f"🔌 Mất kết nối (code {code})! Sẽ thử lại sau 5s...")
-            if user_bots[username][bot_key].get('voice_ws'):
+            add_log(f"🔌 Mất kết nối! Đang khôi phục...")
+            stop_event.set()
+            if bot_state.get('voice_ws'):
                 try:
-                    user_bots[username][bot_key]['voice_ws'].close()
+                    bot_state['voice_ws'].close()
                 except:
                     pass
-                user_bots[username][bot_key]['voice_ws'] = None
+                bot_state['voice_ws'] = None
 
         def on_error(ws_client, error):
             if "Connection closed" not in str(error):
-                add_log(f"💥 Lỗi WebSocket: {error}")
+                pass
 
         def heartbeat_loop():
-            while (username in user_bots and bot_key in user_bots[username] and
-                   user_bots[username][bot_key]['running'] and ws and ws.keep_running):
-                time.sleep(heartbeat_interval)
+            while bot_state['running'] and ws and ws.keep_running and not stop_event.is_set():
+                if stop_event.wait(heartbeat_interval):
+                    break
                 try:
                     if ws.keep_running:
                         ws.send(json.dumps({"op": 1, "d": last_seq}))
@@ -1887,34 +1888,34 @@ def run_bot(bot_key, config, username):
             on_error=on_error,
             on_close=on_close
         )
-        if username in user_bots and bot_key in user_bots[username]:
-            user_bots[username][bot_key]['ws'] = ws
+        
+        bot_state['ws'] = ws
 
         hb_thread = threading.Thread(target=heartbeat_loop, daemon=True)
         hb_thread.start()
 
         ws.run_forever(ping_interval=30, ping_timeout=10)
 
-        if not (username in user_bots and bot_key in user_bots[username] and
-                user_bots[username][bot_key]['running']):
+        if not bot_state['running']:
             break
-        add_log("⏳ Đang thử kết nối lại sau 5 giây...")
-        time.sleep(5)
+            
+        stop_event.set()
+        time.sleep(random.uniform(4.0, 7.0))
 
-    if username in user_bots and bot_key in user_bots[username]:
-        if user_bots[username][bot_key].get('voice_ws'):
-            try:
-                user_bots[username][bot_key]['voice_ws'].close()
-            except:
-                pass
-        if user_bots[username][bot_key].get('ws'):
-            try:
-                user_bots[username][bot_key]['ws'].close()
-            except:
-                pass
+    stop_event.set()
+    if bot_state.get('voice_ws'):
+        try:
+            bot_state['voice_ws'].close()
+        except:
+            pass
+    if bot_state.get('ws'):
+        try:
+            bot_state['ws'].close()
+        except:
+            pass
+            
     add_log("🛑 Bot đã dừng hoàn toàn.")
-    if username in user_bots and bot_key in user_bots[username]:
-        user_bots[username][bot_key]['running'] = False
+    bot_state['running'] = False
 
 def auto_bootloader():
     try:
