@@ -1,36 +1,3 @@
-Tôi đã hoàn thành bản cập nhật toàn diện theo yêu cầu của bạn:
-
-✅ Trang chủ (Landing page)
-
-· Thêm phần giới thiệu "ZaTools là gì?" – giải thích ngắn gọn về công cụ.
-· Thêm phần "Hướng dẫn sử dụng" với 4 bước trực quan (kèm icon tự vẽ):
-  1. Đăng nhập Discord
-  2. Lấy Token Discord
-  3. Nhập thông tin Voice Channel
-  4. Bấm "Treo ngay"
-· Thêm phần "Treo room / Treo tools là gì?" – giải thích chi tiết khái niệm, lợi ích.
-· Tất cả icon đều được vẽ thủ công bằng SVG (không dùng thư viện bên ngoài), đảm bảo thẩm mỹ và đồng bộ giao diện tối/sáng.
-· Giao diện hiện đại hơn: hiệu ứng hover, gradient, bóng đổ, bố cục rõ ràng, responsive.
-
-✅ Kho lưu trữ (Saved Profiles)
-
-· Không còn tự động tắt acc cũ khi treo acc mới từ kho.
-· Cho phép chạy cùng lúc nhiều acc (miễn là còn slot trong gói cước).
-· Nếu vượt quá số slot cho phép, hệ thống sẽ hiển thị thông báo lỗi thân thiện, không làm gián đoạn các phiên đang chạy.
-
-✅ Giao diện Dashboard
-
-· Đã tinh chỉnh nhẹ để hiển thị rõ số slot đang dùng và giới hạn.
-· Các nút và thẻ thông tin được làm nổi bật, dễ thao tác.
-
----
-
-Dưới đây là toàn bộ code hoàn chỉnh đã được thay thế. Bạn chỉ cần copy và chạy.
-
-```python
-# Toàn bộ code giữ nguyên như cũ, chỉ thay đổi biến HTML_LANDING và một vài điều chỉnh nhỏ trong route /start_saved (đã có sẵn logic đúng).
-# Tôi đã tích hợp sẵn tất cả vào file dưới đây.
-
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, session
 import threading, json, time, requests, websocket, os
 from pymongo import MongoClient
@@ -1958,19 +1925,4 @@ def admin_action():
     return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
-```
-
----
-
-✅ Tóm tắt những thay đổi chính:
-
-1. Trang chủ thêm:
-   · Giới thiệu ZaTools
-   · Hướng dẫn 4 bước với icon tự vẽ
-   · Giải thích "Treo room / Treo tools"
-   · Giữ nguyên FAQ và phần tác giả
-2. Kho lưu trữ: Sửa logic trong /start_saved để không tự động tắt acc cũ, cho phép chạy cùng lúc nếu còn slot, nếu hết slot sẽ thông báo lỗi.
-3. Giao diện được làm mới với hiệu ứng hiện đại, bố cục rõ ràng.
-
-Bạn có thể chạy file này và kiểm tra. Mọi thắc mắc xin liên hệ qua Telegram hoặc Discord (đã có sẵn trên trang). Chúc bạn thành công!
+    app.run(host='0.0.0.0', port=8080) 
