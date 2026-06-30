@@ -843,7 +843,7 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== DASHBOARD CHÍNH ==================
+# ================== DASHBOARD CHÍNH (ĐÃ TÁCH TAB) ==================
 HTML_MAIN = HTML_HEAD + """
 <title>ZaTools - Dashboard</title>
 <style>
@@ -998,6 +998,15 @@ HTML_MAIN = HTML_HEAD + """
     .btn-flex .btn { flex: 1; }
 
     /* ===== TAB SYSTEM ===== */
+    .tab-header {
+        display: flex; gap: 8px; margin-bottom: 18px;
+        background: rgba(255,255,255,0.02); padding: 5px; border-radius: 14px;
+        border: 1px solid var(--input-border);
+        flex-wrap: wrap;
+    }
+    .tab-btn { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-radius: 10px; transition: 0.3s; letter-spacing: 0.5px; text-transform: uppercase; min-width: 80px; }
+    .tab-btn.active { background: var(--btn-bg); color: #fff; box-shadow: 0 4px 12px rgba(0,200,255,0.2); }
+
     .tab-content { display: none; animation: fadeIn 0.3s; }
     .tab-content.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -1038,7 +1047,6 @@ HTML_MAIN = HTML_HEAD + """
         border-radius: 14px; padding: 14px 16px;
         margin-bottom: 10px;
         border: 1px solid var(--input-border);
-        display: flex; justify-content: space-between; align-items: center;
         transition: 0.2s;
     }
     .account-card:hover { border-color: var(--border-hover); }
@@ -1047,8 +1055,38 @@ HTML_MAIN = HTML_HEAD + """
         display: flex; align-items: center; gap: 7px;
     }
     .account-card .name .svg-icon { width: 15px; height: 15px; min-width: 15px; overflow: visible; color: var(--accent); }
+    .account-card .status-badge {
+        font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 10px; border-radius: 30px;
+    }
+    .status-online { color: var(--success-text); background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.2); }
+    .status-offline { color: var(--danger-text); background: rgba(255,68,88,0.1); border: 1px solid rgba(255,68,88,0.2); }
 
-    /* ===== LOG BOX ===== */
+    .account-actions {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .account-actions .btn { width: auto; padding: 6px 14px; font-size: 11px; }
+    .account-actions .btn-icon { padding: 6px 10px; }
+
+    .log-container {
+        margin-top: 12px; background: rgba(0,0,0,0.5); border-radius: 12px;
+        padding: 12px; max-height: 180px; overflow-y: auto;
+        font-family: 'Courier New', monospace; font-size: 11px; color: #00e676;
+        border: 1px solid var(--input-border); white-space: pre-wrap; word-break: break-all;
+        line-height: 1.6; display: none;
+    }
+    .log-container.open { display: block; }
+    .log-container::-webkit-scrollbar { width: 4px; }
+    .log-container::-webkit-scrollbar-track { background: transparent; }
+    .log-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+    .rpc-edit-form {
+        margin-top: 12px; padding: 14px; background: rgba(255,255,255,0.03);
+        border-radius: 12px; border: 1px solid var(--input-border); display: none;
+    }
+    .rpc-edit-form.open { display: block; }
+
+    /* ===== LOG BOX (giữ cho tab treo nếu có) ===== */
     .log-box {
         background: rgba(0,0,0,0.5); border-radius: 14px; padding: 15px;
         max-height: 240px; overflow-y: auto;
@@ -1061,14 +1099,6 @@ HTML_MAIN = HTML_HEAD + """
     .log-box::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
 
     /* ===== PLAN BOXES ===== */
-    .tab-header {
-        display: flex; gap: 8px; margin-bottom: 18px;
-        background: rgba(255,255,255,0.02); padding: 5px; border-radius: 14px;
-        border: 1px solid var(--input-border);
-    }
-    .tab-btn { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-radius: 10px; transition: 0.3s; letter-spacing: 0.5px; text-transform: uppercase; }
-    .tab-btn.active { background: var(--btn-bg); color: #fff; box-shadow: 0 4px 12px rgba(0,200,255,0.2); }
-
     .plan-box {
         background: rgba(255,255,255,0.02); border: 1px solid var(--input-border);
         border-radius: 16px; padding: 20px; margin-bottom: 14px; text-align: center; transition: 0.3s;
@@ -1089,11 +1119,10 @@ HTML_MAIN = HTML_HEAD + """
 
     /* ===== MOBILE ===== */
     @media (max-width: 600px) {
-        .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
-        .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
-        .account-card form { flex: 1; display: flex; }
-        .account-card .btn { width: 100%; justify-content: center; }
+        .account-card .account-actions { flex-direction: column; align-items: stretch; }
+        .account-actions .btn { width: 100%; justify-content: center; }
         .input-row { flex-direction: column; gap: 0; }
+        .tab-btn { font-size: 10px; padding: 8px; min-width: 60px; }
     }
 </style>
 </head>
@@ -1121,6 +1150,10 @@ HTML_MAIN = HTML_HEAD + """
             <a href="#" class="dp-item active-tab" onclick="switchTab('treo', this)">
                 <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                 Thiết Lập Treo
+            </a>
+            <a href="#" class="dp-item" onclick="switchTab('running', this)">
+                <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Acc Đang Hoạt Động
             </a>
             <a href="#" class="dp-item" onclick="switchTab('saved', this)">
                 <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
@@ -1187,10 +1220,11 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
+    <!-- ======== TAB 1: THIẾT LẬP TREO ======== -->
     <div id="tab-treo" class="tab-content active">
         <form method="POST">
             <div class="card">
-                <div class="card-title">Thiết Lập Kết Nối</div>
+                <div class="card-title">Tạo Cấu Hình Mới</div>
                 <div class="input-group"><label>Tên gợi nhớ (nếu lưu)</label><input type="text" name="profile_name" placeholder="Ví dụ: Acc Cày Cấp..."></div>
                 <div class="input-group"><label>Discord Token</label><input type="text" name="token" required placeholder="Nhập Token của bạn..."></div>
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required placeholder="1234567890..."></div>
@@ -1236,10 +1270,14 @@ HTML_MAIN = HTML_HEAD + """
                 </div>
             </div>
         </form>
+        <!-- Không hiển thị danh sách bot hay terminal ở đây -->
+    </div>
 
+    <!-- ======== TAB 2: ACC ĐANG HOẠT ĐỘNG ======== -->
+    <div id="tab-running" class="tab-content">
         <div class="card">
             <div class="card-title">
-                Phiên Đang Chạy
+                Danh sách Acc Treo
                 {% if running_count > 0 %}
                 <form method="POST" action="/stop_all" style="margin:0;">
                     <button type="submit" class="btn btn-danger" style="padding:7px 14px; font-size:11px; width:auto;">DỪNG HẾT</button>
@@ -1247,37 +1285,69 @@ HTML_MAIN = HTML_HEAD + """
                 {% endif %}
             </div>
             {% for key, bot in bot_items %}
-            <div class="account-card">
-                <div>
-                    <div class="name">
-                        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                        {{ bot.get('display_name', 'Đang kết nối...') }}
+            <div class="account-card" data-bot-key="{{ key }}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                    <div>
+                        <div class="name">
+                            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="12" r="4"></circle></svg>
+                            {{ bot.get('display_name', 'Đang kết nối...') }}
+                        </div>
+                        <div>
+                            <span class="status-badge {% if bot.connected %}status-online{% else %}status-offline{% endif %}">
+                                {% if bot.connected %}⬤ Online{% else %}● Offline{% endif %}
+                            </span>
+                        </div>
                     </div>
-                    <div style="font-size:11px; color:var(--success-text); margin-left: 22px; font-weight:600;" id="status-{{ loop.index0 }}">⬤ Treo vĩnh cửu</div>
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button class="btn btn-success btn-icon" onclick="toggleLog('{{ key }}')" style="padding:6px 10px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;overflow:visible;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            Log
+                        </button>
+                        <button class="btn btn-primary btn-icon" onclick="toggleRPC('{{ key }}')" style="padding:6px 10px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;overflow:visible;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            RPC
+                        </button>
+                        <form method="POST" action="/stop" style="margin:0;">
+                            <input type="hidden" name="bot_key" value="{{ key }}">
+                            <button type="submit" class="btn btn-danger btn-icon" style="padding:6px 10px;">
+                                <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;overflow:visible;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <form method="POST" action="/stop">
-                    <input type="hidden" name="bot_key" value="{{ key }}">
-                    <button type="submit" class="btn btn-danger" style="width:auto; padding:10px 14px;">
-                        <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;overflow:visible;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
-            {% if not bot_items %}<div style="font-size:12px; color:var(--text-muted); text-align:center; padding: 15px 0;">Chưa có phiên nào hoạt động.</div>{% endif %}
-        </div>
 
-        <div class="card">
-            <div class="card-title">
-                Live Terminal
-                <form method="POST" action="/refresh" style="margin:0;">
-                    <input type="hidden" name="tab" value="treo">
-                    <button type="submit" style="background:transparent; border:none; color:var(--accent); cursor:pointer; font-size:12px; font-weight:700;">↺ TẢI LẠI</button>
-                </form>
+                <!-- Log riêng -->
+                <div class="log-container" id="log-{{ key }}">Đang tải log...</div>
+
+                <!-- Form chỉnh sửa RPC -->
+                <div class="rpc-edit-form" id="rpc-{{ key }}">
+                    <form method="POST" action="/update_bot">
+                        <input type="hidden" name="bot_key" value="{{ key }}">
+                        <div class="input-group"><label>Tiêu đề Game</label><input type="text" name="status_text" value="{{ bot.get('status_text', '') }}" placeholder="Game..."></div>
+                        <div class="input-row">
+                            <div class="input-group"><label>Dòng 1</label><input type="text" name="rpc_details" value="{{ bot.get('rpc_details', '') }}" placeholder="Details..."></div>
+                            <div class="input-group"><label>Dòng 2</label><input type="text" name="rpc_state" value="{{ bot.get('rpc_state', '') }}" placeholder="State..."></div>
+                        </div>
+                        <div class="input-group"><label>Ảnh lớn (URL)</label><input type="text" name="rpc_image" value="{{ bot.get('rpc_image', '') }}" placeholder="https://..."></div>
+                        <div class="input-row">
+                            <div class="input-group"><label>Tên Nút 1</label><input type="text" name="rpc_b1_name" value="{{ bot.get('rpc_b1_name', '') }}"></div>
+                            <div class="input-group"><label>Link Nút 1</label><input type="text" name="rpc_b1_url" value="{{ bot.get('rpc_b1_url', '') }}"></div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group"><label>Tên Nút 2</label><input type="text" name="rpc_b2_name" value="{{ bot.get('rpc_b2_name', '') }}"></div>
+                            <div class="input-group"><label>Link Nút 2</label><input type="text" name="rpc_b2_url" value="{{ bot.get('rpc_b2_url', '') }}"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top:8px;">CẬP NHẬT RPC</button>
+                    </form>
+                </div>
             </div>
-            <div class="log-box" id="live-log-box">Đang kết nối hệ thống...</div>
+            {% else %}
+            <div style="font-size:12px; color:var(--text-muted); text-align:center; padding: 25px 0;">Chưa có tài khoản nào đang hoạt động.</div>
+            {% endfor %}
         </div>
     </div>
 
+    <!-- ======== TAB 3: KHO DỮ LIỆU ======== -->
     <div id="tab-saved" class="tab-content">
         <div class="card">
             <div class="card-title">Kho Dữ Liệu Cá Nhân</div>
@@ -1287,7 +1357,7 @@ HTML_MAIN = HTML_HEAD + """
                     <div class="name" style="color: var(--coin-color);">{{ profile.profile_name }}</div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:3px;">Máy chủ: {{ profile.guild_id }}</div>
                 </div>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; gap:8px; margin-top:6px;">
                     <form method="POST" action="/start_saved">
                         <input type="hidden" name="profile_id" value="{{ profile._id }}">
                         <button type="submit" class="btn btn-success" style="padding:10px 14px; width:auto;">
@@ -1307,8 +1377,9 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
+    <!-- ======== TAB 4: NẠP & MUA GÓI ======== -->
     <div id="tab-premium" class="tab-content">
-        <div class="tab-header">
+        <div class="tab-header" style="justify-content: center; gap: 6px;">
             <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
             <div class="tab-btn" id="btn-mua" onclick="switchSubTab('mua')">CỬA HÀNG GÓI</div>
         </div>
@@ -1391,33 +1462,40 @@ HTML_MAIN = HTML_HEAD + """
         document.getElementById('sub-' + sub).style.display = 'block';
         document.getElementById('btn-' + sub).classList.add('active');
     }
-    window.onload = () => {
-        let reqTab = '{{ active_tab }}';
-        let tabToLoad = reqTab !== 'None' ? reqTab : (localStorage.getItem('za_active_tab') || 'treo');
-        let links = document.querySelectorAll('.dp-item');
-        let targetLink = Array.from(links).find(l => l.getAttribute('onclick') && l.getAttribute('onclick').includes("'" + tabToLoad + "'"));
-        if(targetLink) switchTab(tabToLoad, targetLink);
-        fetchLiveLogs();
-        setInterval(fetchLiveLogs, 3000);
-    };
-    function fetchLiveLogs() {
-        if(document.getElementById('tab-treo').classList.contains('active')) {
-            fetch('/api/get_logs').then(r => r.json()).then(data => {
-                const logBox = document.getElementById('live-log-box');
-                if(data.log.length > 0) {
-                    let txt = data.log.join('\\n');
-                    if(logBox.innerHTML !== txt) { logBox.innerHTML = txt; logBox.scrollTop = logBox.scrollHeight; }
-                } else { logBox.innerHTML = 'Đang chờ hệ thống...'; }
-                data.status.forEach((st, i) => {
-                    let el = document.getElementById('status-' + i);
-                    if(el) {
-                        el.innerHTML = st.connected ? '⬤ Treo vĩnh cửu' : '● Mất kết nối / Đang xử lý...';
-                        el.style.color = st.connected ? 'var(--success-text)' : 'var(--danger-text)';
+
+    // Toggle log container
+    function toggleLog(botKey) {
+        const logEl = document.getElementById('log-' + botKey);
+        if (logEl.classList.contains('open')) {
+            logEl.classList.remove('open');
+        } else {
+            logEl.classList.add('open');
+            // Load log từ API
+            fetch('/api/get_logs?bot_key=' + botKey)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.log && data.log.length > 0) {
+                        logEl.innerHTML = data.log.join('\\n');
+                    } else {
+                        logEl.innerHTML = 'Chưa có log cho tài khoản này.';
                     }
-                });
-            });
+                    logEl.scrollTop = logEl.scrollHeight;
+                })
+                .catch(() => { logEl.innerHTML = 'Lỗi tải log.'; });
         }
     }
+
+    // Toggle RPC edit form
+    function toggleRPC(botKey) {
+        const form = document.getElementById('rpc-' + botKey);
+        form.classList.toggle('open');
+    }
+
+    // Tự động load log cho các acc đang mở khi load trang (nếu có)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Không tự động mở log khi tải trang
+    });
+
     let checkPaymentInterval;
     let currentBalance = {{ balance }};
     function generateNapQR() {
@@ -1444,6 +1522,15 @@ HTML_MAIN = HTML_HEAD + """
             }
         });
     }
+
+    // Xử lý active tab từ URL hoặc localStorage
+    window.onload = () => {
+        let reqTab = '{{ active_tab }}';
+        let tabToLoad = reqTab !== 'None' ? reqTab : (localStorage.getItem('za_active_tab') || 'treo');
+        let links = document.querySelectorAll('.dp-item');
+        let targetLink = Array.from(links).find(l => l.getAttribute('onclick') && l.getAttribute('onclick').includes("'" + tabToLoad + "'"));
+        if(targetLink) switchTab(tabToLoad, targetLink);
+    };
 </script>
 </body>
 </html>
@@ -1506,7 +1593,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== BOT LOGIC ==================
+# ================== BOT LOGIC (giữ nguyên) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -1518,7 +1605,21 @@ def run_bot(bot_key, config, username):
     ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
     start_time = int(time.time() * 1000)
     if username not in user_bots: user_bots[username] = {}
-    user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
+    user_bots[username][bot_key] = {
+        'connected': False,
+        'log': [],
+        'running': True,
+        'display_name': 'Đang kết nối...',
+        # Lưu lại config để hiển thị trong form RPC
+        'status_text': config.get('status_text', ''),
+        'rpc_details': config.get('rpc_details', ''),
+        'rpc_state': config.get('rpc_state', ''),
+        'rpc_image': config.get('rpc_image', ''),
+        'rpc_b1_name': config.get('rpc_b1_name', ''),
+        'rpc_b1_url': config.get('rpc_b1_url', ''),
+        'rpc_b2_name': config.get('rpc_b2_name', ''),
+        'rpc_b2_url': config.get('rpc_b2_url', '')
+    }
     def add_log(msg):
         if username in user_bots and bot_key in user_bots[username]:
             timestamp = time.strftime('%H:%M:%S')
@@ -1656,12 +1757,16 @@ def api_get_balance():
 def api_get_logs():
     if 'username' not in session: return jsonify({"log": [], "status": []})
     usr = session['username']
-    if usr not in user_bots or not user_bots[usr]: return jsonify({"log": [], "status": []})
-    active_bots = [(k, v) for k, v in user_bots[usr].items() if v.get('running', False)]
-    if not active_bots: return jsonify({"log": [], "status": []})
-    log_data = active_bots[0][1].get('log', [])
-    status_data = [{"bot_key": k, "connected": v.get('connected', False)} for k, v in active_bots]
-    return jsonify({"log": log_data, "status": status_data})
+    bot_key = request.args.get('bot_key')
+    if bot_key and usr in user_bots and bot_key in user_bots[usr]:
+        bot = user_bots[usr][bot_key]
+        return jsonify({"log": bot.get('log', []), "connected": bot.get('connected', False)})
+    # Nếu không có bot_key, trả về log của bot đầu tiên (tương thích)
+    if usr in user_bots and user_bots[usr]:
+        first_key = next(iter(user_bots[usr]))
+        bot = user_bots[usr][first_key]
+        return jsonify({"log": bot.get('log', []), "connected": bot.get('connected', False)})
+    return jsonify({"log": [], "connected": False})
 
 @app.route('/buy_plan', methods=['POST'])
 def buy_plan():
@@ -1703,12 +1808,11 @@ def index():
     is_admin = db_user.get('is_admin', False) if db_user else False
     balance = db_user.get('balance', 0) if db_user else 0
     active_bots = [(k, v) for k, v in user_bots.get(usr, {}).items() if v.get('running', False)]
-    log = active_bots[0][1].get('log', []) if active_bots else []
     return render_template_string(HTML_MAIN, bot_items=active_bots, current_user=usr, avatar_url=avatar_url, balance=balance, plan_name=plan_name,
                                   saved_profiles=get_saved_profiles(usr), max_tokens=max_tokens,
                                   running_count=len(active_bots), is_admin=is_admin, expiry_info=expiry_info,
                                   flash_msg=session.pop('flash_msg', None), flash_type=session.pop('flash_type', 'success'),
-                                  active_tab=request.args.get('tab', 'None'), log=log)
+                                  active_tab=request.args.get('tab', 'None'))
 
 @app.route('/start', methods=['POST'])
 def start():
@@ -1829,7 +1933,7 @@ def stop():
     if usr in user_bots and bot_key in user_bots[usr]:
         user_bots[usr][bot_key]['running'] = False
         del user_bots[usr][bot_key]
-    return redirect(url_for('index', tab='treo'))
+    return redirect(url_for('index', tab='running'))
 
 @app.route('/stop_all', methods=['POST'])
 def stop_all():
@@ -1841,7 +1945,7 @@ def stop_all():
             del user_bots[usr][bot_key]
     session['flash_msg'] = "Đã tắt thành công toàn bộ Token!"
     session['flash_type'] = "success"
-    return redirect(url_for('index', tab='treo'))
+    return redirect(url_for('index', tab='running'))
 
 @app.route('/login/discord')
 def login_discord():
@@ -1879,6 +1983,56 @@ def ping():
 @app.route('/refresh', methods=['POST'])
 def refresh():
     return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
+
+# ===== ENDPOINT CẬP NHẬT RPC CHO BOT =====
+@app.route('/update_bot', methods=['POST'])
+def update_bot():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    usr = session['username']
+    bot_key = request.form.get('bot_key')
+    if not bot_key or usr not in user_bots or bot_key not in user_bots[usr]:
+        session['flash_msg'] = "Không tìm thấy bot!"
+        session['flash_type'] = "error"
+        return redirect(url_for('index', tab='running'))
+    
+    # Lấy config mới từ form
+    new_config = {
+        'status_text': request.form.get('status_text', '').strip(),
+        'rpc_details': request.form.get('rpc_details', '').strip(),
+        'rpc_state': request.form.get('rpc_state', '').strip(),
+        'rpc_image': request.form.get('rpc_image', '').strip(),
+        'rpc_b1_name': request.form.get('rpc_b1_name', '').strip(),
+        'rpc_b1_url': request.form.get('rpc_b1_url', '').strip(),
+        'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(),
+        'rpc_b2_url': request.form.get('rpc_b2_url', '').strip()
+    }
+    # Lấy config hiện tại từ DB để giữ token, guild_id, channel_id, mute, deaf, video, stream
+    doc = accounts_collection.find_one({"bot_key": bot_key, "owner": usr})
+    if not doc:
+        session['flash_msg'] = "Không tìm thấy cấu hình trong DB!"
+        session['flash_type'] = "error"
+        return redirect(url_for('index', tab='running'))
+    
+    # Cập nhật config mới
+    updated_config = {**doc, **new_config}
+    # Xóa các trường không cần thiết
+    for key in ['_id', 'owner', 'bot_key']:
+        updated_config.pop(key, None)
+    # Lưu vào DB
+    save_storage_item(bot_key, updated_config, usr)
+    
+    # Dừng bot hiện tại
+    if bot_key in user_bots[usr]:
+        user_bots[usr][bot_key]['running'] = False
+        time.sleep(0.5)
+        del user_bots[usr][bot_key]
+    
+    # Khởi động lại bot
+    threading.Thread(target=run_bot, args=(bot_key, updated_config, usr), daemon=True).start()
+    session['flash_msg'] = "Đã cập nhật RPC và khởi động lại bot!"
+    session['flash_type'] = "success"
+    return redirect(url_for('index', tab='running'))
 
 @app.route('/admin_dangkhoi')
 def admin_dashboard():
