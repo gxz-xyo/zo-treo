@@ -72,7 +72,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== CSS GLOBAL (ĐÃ FIX ICON + UI ĐẸP HƠN) ==================
+# ================== CSS GLOBAL ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -280,7 +280,7 @@ TG_FLOAT_BTN = """
 </a>
 """
 
-# ================== LANDING PAGE MỚI (CÓ HƯỚNG DẪN, GIỚI THIỆU, FAQ, ICON TỰ VẼ) ==================
+# ================== LANDING PAGE ==================
 HTML_LANDING = HTML_HEAD + """
 <title>ZaTools - Nền Tảng Giữ Discord Luôn Online</title>
 <style>
@@ -351,7 +351,7 @@ HTML_LANDING = HTML_HEAD + """
     .stat-val { font-size: 30px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
     .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
 
-    /* ====== PHẦN GIỚI THIỆU ZATOOLS ====== */
+    /* ====== PHẦN GIỚI THIỆU ====== */
     .intro-section {
         max-width: 820px; margin: 40px auto; padding: 0 20px;
     }
@@ -428,7 +428,7 @@ HTML_LANDING = HTML_HEAD + """
     .step-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; color: var(--text-main); }
     .step-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
 
-    /* ====== TREO ROOM / TREO TOOLS LÀ GÌ? ====== */
+    /* ====== TREO ROOM / TREO TOOLS ====== */
     .explain-section {
         max-width: 820px; margin: 60px auto; padding: 0 20px;
     }
@@ -441,7 +441,7 @@ HTML_LANDING = HTML_HEAD + """
     .explain-box h2 svg { width: 32px; height: 32px; color: var(--accent); stroke-width: 1.5; }
     .explain-box p { font-size: 15px; color: var(--text-muted); line-height: 1.8; margin-bottom: 12px; }
 
-    /* ====== FAQ (giữ nguyên) ====== */
+    /* ====== FAQ ====== */
     .faq-section {
         max-width: 820px; margin: 60px auto; padding: 0 20px;
     }
@@ -476,7 +476,7 @@ HTML_LANDING = HTML_HEAD + """
         max-height: 300px; padding: 0 20px 20px 20px;
     }
 
-    /* ====== AUTHOR & CONTACT ====== */
+    /* ====== AUTHOR ====== */
     .author-section {
         max-width: 820px; margin: 80px auto 40px; padding: 0 20px;
         display: flex; flex-wrap: wrap; gap: 30px;
@@ -552,7 +552,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </nav>
 
-<!-- HERO -->
 <div class="hero reveal">
     <div class="hero-badge"><span class="hero-badge-dot"></span> Hoạt động mượt mà 24/7</div>
     <h1>Giữ Discord của bạn<br><span class="gradient-text">Luôn Online & Đẳng Cấp</span></h1>
@@ -572,7 +571,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- GIỚI THIỆU ZATOOLS -->
 <div class="intro-section reveal">
     <div class="intro-box">
         <div class="intro-icon">
@@ -588,7 +586,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- FEATURES -->
 <div id="features" class="features reveal">
     <div class="features-head">
         <div class="features-eyebrow">CHÚNG TÔI CUNG CẤP GÌ</div>
@@ -637,7 +634,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- HƯỚNG DẪN SỬ DỤNG -->
 <div id="guide" class="guide-section reveal">
     <div class="guide-title">📘 Hướng dẫn sử dụng</div>
     <div class="guide-sub">Chỉ với 4 bước đơn giản, bạn đã có thể treo tài khoản Discord 24/7</div>
@@ -690,7 +686,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- TREO ROOM / TREO TOOLS LÀ GÌ? -->
 <div class="explain-section reveal">
     <div class="explain-box">
         <h2>
@@ -706,7 +701,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- FAQ -->
 <div class="faq-section reveal">
     <div class="faq-title">💬 Câu Hỏi Thường Gặp</div>
     <div class="faq-sub">Những thắc mắc phổ biến khi sử dụng ZaTools</div>
@@ -772,7 +766,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- AUTHOR & CONTACT -->
 <div class="author-section reveal">
     <div class="author-left">
         <img src="https://i.imgur.com/IeytfHP.jpeg" alt="ZaTools Creator" />
@@ -798,7 +791,6 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- FOOTER -->
 <div class="footer reveal">
     <p>&copy; 2026 ZaTools Premium — Developed by Dang Khoi</p>
     <p style="color: var(--success-text); margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:700;">
@@ -822,8 +814,6 @@ HTML_LANDING = HTML_HEAD + """
         if (item.classList.contains('open')) {
             item.classList.remove('open');
         } else {
-            // Đóng tất cả các item khác (tuỳ chọn)
-            // document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
             item.classList.add('open');
         }
     }
@@ -853,7 +843,7 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== DASHBOARD CHÍNH (GIỮ NGUYÊN, CHỈ CẢI THIỆN HIỂN THỊ SLOT) ==================
+# ================== DASHBOARD CHÍNH ==================
 HTML_MAIN = HTML_HEAD + """
 <title>ZaTools - Dashboard</title>
 <style>
@@ -1166,7 +1156,6 @@ HTML_MAIN = HTML_HEAD + """
     </div>
     {% endif %}
 
-    <!-- STATS GRID -->
     <div class="stats-grid">
         <div class="stat-card accent-success">
             <h3>
@@ -1198,7 +1187,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- TAB TREO -->
     <div id="tab-treo" class="tab-content active">
         <form method="POST">
             <div class="card">
@@ -1290,7 +1278,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- TAB KHO DỮ LIỆU -->
     <div id="tab-saved" class="tab-content">
         <div class="card">
             <div class="card-title">Kho Dữ Liệu Cá Nhân</div>
@@ -1320,7 +1307,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 
-    <!-- TAB NẠP & MUA GÓI -->
     <div id="tab-premium" class="tab-content">
         <div class="tab-header">
             <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
@@ -1520,7 +1506,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== BOT LOGIC (GIỮ NGUYÊN) ==================
+# ================== BOT LOGIC ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -1647,7 +1633,7 @@ def auto_bootloader():
     except: pass
 auto_bootloader()
 
-# ================== ROUTES (GIỮ NGUYÊN LOGIC) ==================
+# ================== ROUTES ==================
 @app.route('/sepay_webhook', methods=['POST'])
 def sepay_webhook():
     try:
@@ -1730,21 +1716,29 @@ def start():
     usr = session['username']
     max_tokens, _, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
-    bot_key = f"{request.form.get('guild_id')}_{request.form.get('channel_id')}"
+    
+    token = request.form.get('token', '').strip()
+    token_suffix = token[-10:] if len(token) > 10 else token
+    bot_key = f"{token_suffix}_{request.form.get('guild_id')}_{request.form.get('channel_id')}"
+    
     if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
         session['flash_msg'] = f"Gói của bạn ({max_tokens} slot) đã đầy hoặc hết hạn!"
         session['flash_type'] = "error"
         return redirect(url_for('index', tab='treo'))
+        
     config = {
-        'token': request.form.get('token', '').strip(), 'guild_id': request.form.get('guild_id', '').strip(), 'channel_id': request.form.get('channel_id', '').strip(),
+        'token': token, 'guild_id': request.form.get('guild_id', '').strip(), 'channel_id': request.form.get('channel_id', '').strip(),
         'status_text': request.form.get('status_text', '').strip(), 'rpc_details': request.form.get('rpc_details', '').strip(), 'rpc_state': request.form.get('rpc_state', '').strip(),
         'rpc_image': request.form.get('rpc_image', '').strip(), 'rpc_b1_name': request.form.get('rpc_b1_name', '').strip(), 'rpc_b1_url': request.form.get('rpc_b1_url', '').strip(),
         'rpc_b2_name': request.form.get('rpc_b2_name', '').strip(), 'rpc_b2_url': request.form.get('rpc_b2_url', '').strip(),
         'mute': request.form.get('mute') == 'on', 'deaf': request.form.get('deaf') == 'on', 'video': request.form.get('video') == 'on', 'stream': request.form.get('stream') == 'on'
     }
+    
     save_storage_item(bot_key, config, usr)
+    
     if usr not in user_bots: user_bots[usr] = {}
     if bot_key in user_bots[usr]: user_bots[usr][bot_key]['running'] = False; time.sleep(0.5)
+    
     threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
     return redirect(url_for('index', tab='treo'))
 
@@ -1753,39 +1747,47 @@ def start_saved():
     usr = session.get('username')
     if not usr:
         return redirect(url_for('index'))
+        
     max_tokens, _, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     prof_id = request.form.get('profile_id')
+    
     try:
         prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
     except:
         prof = None
+        
     if prof:
-        bot_key = f"{prof.get('guild_id')}_{prof.get('channel_id')}"
-        # Nếu token đã chạy thì không cần kiểm tra slot, nếu chưa chạy và đã đầy slot thì báo lỗi
+        token = prof.get('token', '').strip()
+        token_suffix = token[-10:] if len(token) > 10 else token
+        bot_key = f"{token_suffix}_{prof.get('guild_id')}_{prof.get('channel_id')}"
+        
         if bot_key not in user_bots.get(usr, {}) and current_running >= max_tokens:
             session['flash_msg'] = f"Bạn đã dùng hết {max_tokens} slot. Vui lòng nâng cấp gói để treo thêm!"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='saved'))
-        # Nếu bot_key đã tồn tại, ta sẽ không khởi tạo lại, hoặc có thể restart nếu muốn. Nhưng để đơn giản ta bỏ qua vì đã có cơ chế auto reconnect.
+            
         if bot_key in user_bots.get(usr, {}):
             session['flash_msg'] = "Tài khoản này đã được treo rồi!"
             session['flash_type'] = "success"
             return redirect(url_for('index', tab='treo'))
+            
         config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         config['bot_key'] = bot_key
         save_storage_item(bot_key, config, usr)
+        
         if usr not in user_bots: user_bots[usr] = {}
-        # Đảm bảo không có bot cũ (nếu có) thì tắt trước khi chạy mới
         if bot_key in user_bots[usr]:
             user_bots[usr][bot_key]['running'] = False
             time.sleep(0.5)
+            
         threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
         session['flash_msg'] = "Đã bắt đầu treo tài khoản từ kho!"
         session['flash_type'] = "success"
     else:
         session['flash_msg'] = "Không tìm thấy cấu hình!"
         session['flash_type'] = "error"
+        
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/save_profile', methods=['POST'])
@@ -1925,4 +1927,4 @@ def admin_action():
     return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080) 
+    app.run(host='0.0.0.0', port=8080)
