@@ -2,7 +2,6 @@ from flask import Flask, render_template_string, request, jsonify, redirect, url
 import threading, json, time, requests, websocket, os
 from pymongo import MongoClient
 from requests_oauthlib import OAuth2Session
-from werkzeug.security import generate_password_hash
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
@@ -138,7 +137,6 @@ HTML_HEAD = """
                 radial-gradient(ellipse at 50% 50%, rgba(0, 82, 212, 0.04) 0%, transparent 70%);
         }
 
-        /* ============ FIX CORE: SVG ICON KHÔNG BỊ CẮT ============ */
         .svg-icon {
             width: 16px;
             height: 16px;
@@ -155,7 +153,6 @@ HTML_HEAD = """
             vertical-align: middle;
         }
 
-        /* ============ LOGO ============ */
         .logo {
             font-size: 22px;
             font-weight: 900;
@@ -168,7 +165,6 @@ HTML_HEAD = """
         }
         .logo-icon { color: var(--accent); width: 22px; height: 22px; min-width: 22px; overflow: visible; }
 
-        /* ============ THEME TOGGLE ============ */
         .theme-toggle-btn {
             background: transparent;
             border: none;
@@ -182,7 +178,6 @@ HTML_HEAD = """
         }
         .theme-toggle-btn:hover { color: var(--accent); background: var(--accent-hover); }
 
-        /* ============ TELEGRAM FLOAT BUTTON ============ */
         .tg-float {
             position: fixed;
             bottom: 28px;
@@ -234,7 +229,6 @@ HTML_HEAD = """
             100% { box-shadow: 0 4px 20px rgba(0, 136, 204, 0.5), 0 0 0 0 rgba(0, 136, 204, 0); }
         }
 
-        /* ============ FLASH MESSAGES ============ */
         .msg {
             display: flex;
             align-items: center;
@@ -277,7 +271,6 @@ THEME_SCRIPT = """
     </script>
 """
 
-# Telegram float button HTML (dùng lại ở nhiều trang)
 TG_FLOAT_BTN = """
 <a href="https://t.me/thiendangcuaanh" target="_blank" class="tg-float" title="Liên hệ Telegram">
     <span class="tg-tooltip">Liên hệ hỗ trợ</span>
@@ -287,11 +280,11 @@ TG_FLOAT_BTN = """
 </a>
 """
 
-# ================== LANDING PAGE (MỚI - CÓ FAQ, AUTHOR, CONTACT) ==================
+# ================== LANDING PAGE MỚI (CÓ HƯỚNG DẪN, GIỚI THIỆU, FAQ, ICON TỰ VẼ) ==================
 HTML_LANDING = HTML_HEAD + """
 <title>ZaTools - Nền Tảng Giữ Discord Luôn Online</title>
 <style>
-    /* ====== Các style cũ của landing ====== */
+    /* ====== RESET & CƠ BẢN ====== */
     .reveal { opacity: 0; transform: translateY(40px); transition: 0.8s all cubic-bezier(0.5, 0, 0, 1); }
     .reveal.active { opacity: 1; transform: translateY(0); }
 
@@ -312,7 +305,9 @@ HTML_LANDING = HTML_HEAD + """
     }
     .landing-nav-btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,255,0.4); }
 
-    .hero { text-align: center; padding: 110px 20px 80px; max-width: 820px; margin: 0 auto; }
+    .hero {
+        text-align: center; padding: 110px 20px 80px; max-width: 820px; margin: 0 auto;
+    }
     .hero-badge {
         display: inline-flex; align-items: center; gap: 6px;
         padding: 8px 18px; border-radius: 30px;
@@ -356,21 +351,41 @@ HTML_LANDING = HTML_HEAD + """
     .stat-val { font-size: 30px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
     .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
 
+    /* ====== PHẦN GIỚI THIỆU ZATOOLS ====== */
+    .intro-section {
+        max-width: 820px; margin: 40px auto; padding: 0 20px;
+    }
+    .intro-box {
+        background: var(--card-bg); border: 1px solid var(--border-light);
+        border-radius: 28px; padding: 40px 36px;
+        backdrop-filter: blur(12px);
+        display: flex; flex-wrap: wrap; gap: 30px; align-items: center;
+    }
+    .intro-icon {
+        flex: 0 0 80px; height: 80px;
+        background: rgba(0,200,255,0.08); border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--accent); border: 1px solid var(--border-light);
+    }
+    .intro-icon svg { width: 44px; height: 44px; stroke-width: 1.5; }
+    .intro-text { flex: 1; }
+    .intro-text h2 { font-size: 28px; font-weight: 900; margin-bottom: 12px; color: var(--text-main); }
+    .intro-text p { font-size: 15px; color: var(--text-muted); line-height: 1.7; }
+
     /* ====== FEATURES ====== */
     .features { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
     .features-eyebrow { text-align: center; color: var(--accent); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 14px; }
     .features-head h2 { font-size: 36px; font-weight: 900; margin-bottom: 14px; color: var(--text-main); text-align: center; }
     .features-head p { color: var(--text-muted); font-size: 15px; text-align: center; margin-bottom: 50px; }
 
-    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; }
     .feature-card {
         background: var(--card-bg); border: 1px solid var(--border-light);
         border-radius: 22px; padding: 28px; transition: 0.3s;
         position: relative; overflow: hidden;
     }
     .feature-card::before {
-        content: '';
-        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
         background: linear-gradient(90deg, transparent, var(--f-color), transparent);
         opacity: 0; transition: 0.3s;
     }
@@ -386,7 +401,47 @@ HTML_LANDING = HTML_HEAD + """
     .feature-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--text-main); }
     .feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
 
-    /* ====== FAQ MỚI ====== */
+    /* ====== HƯỚNG DẪN SỬ DỤNG ====== */
+    .guide-section {
+        max-width: 900px; margin: 60px auto; padding: 0 20px;
+    }
+    .guide-title { text-align: center; font-size: 32px; font-weight: 900; margin-bottom: 10px; color: var(--text-main); }
+    .guide-sub { text-align: center; color: var(--text-muted); margin-bottom: 40px; }
+    .guide-steps {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 24px;
+    }
+    .step-card {
+        background: var(--card-bg); border: 1px solid var(--border-light);
+        border-radius: 20px; padding: 24px 20px; text-align: center;
+        transition: 0.3s; backdrop-filter: blur(8px);
+    }
+    .step-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: var(--glow-accent); }
+    .step-number {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 44px; height: 44px; border-radius: 50%;
+        background: var(--accent-hover); color: var(--accent);
+        font-weight: 900; font-size: 18px; margin-bottom: 16px;
+        border: 1px solid var(--border-light);
+    }
+    .step-icon { font-size: 32px; margin-bottom: 12px; display: block; color: var(--accent); }
+    .step-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; color: var(--text-main); }
+    .step-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ====== TREO ROOM / TREO TOOLS LÀ GÌ? ====== */
+    .explain-section {
+        max-width: 820px; margin: 60px auto; padding: 0 20px;
+    }
+    .explain-box {
+        background: var(--card-bg); border: 1px solid var(--border-light);
+        border-radius: 28px; padding: 36px 30px;
+        backdrop-filter: blur(12px);
+    }
+    .explain-box h2 { font-size: 28px; font-weight: 900; margin-bottom: 16px; color: var(--text-main); display: flex; align-items: center; gap: 12px; }
+    .explain-box h2 svg { width: 32px; height: 32px; color: var(--accent); stroke-width: 1.5; }
+    .explain-box p { font-size: 15px; color: var(--text-muted); line-height: 1.8; margin-bottom: 12px; }
+
+    /* ====== FAQ (giữ nguyên) ====== */
     .faq-section {
         max-width: 820px; margin: 60px auto; padding: 0 20px;
     }
@@ -474,6 +529,9 @@ HTML_LANDING = HTML_HEAD + """
         .author-section { flex-direction: column; align-items: center; text-align: center; }
         .contact-info { grid-template-columns: 1fr; }
         .author-social { justify-content: center; }
+        .intro-box { flex-direction: column; text-align: center; }
+        .guide-steps { grid-template-columns: 1fr 1fr; }
+        .step-card { padding: 18px; }
     }
 </style>
 </head>
@@ -504,13 +562,29 @@ HTML_LANDING = HTML_HEAD + """
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
             Bắt Đầu Miễn Phí
         </a>
-        <a href="#features" class="hero-btn-secondary">Cách hoạt động ↓</a>
+        <a href="#guide" class="hero-btn-secondary">Hướng dẫn sử dụng ↓</a>
     </div>
 
     <div class="stats-container">
         <div class="stat-box"><div class="stat-val">500+</div><div class="stat-label">Người dùng</div></div>
         <div class="stat-box"><div class="stat-val">99.9%</div><div class="stat-label">Uptime</div></div>
         <div class="stat-box"><div class="stat-val">24/7</div><div class="stat-label">Hoạt động</div></div>
+    </div>
+</div>
+
+<!-- GIỚI THIỆU ZATOOLS -->
+<div class="intro-section reveal">
+    <div class="intro-box">
+        <div class="intro-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        </div>
+        <div class="intro-text">
+            <h2>ZaTools là gì?</h2>
+            <p><strong>ZaTools</strong> là nền tảng đám mây cho phép bạn giữ tài khoản Discord luôn <strong>Online 24/7</strong> mà không cần mở máy tính. Chỉ cần cung cấp Token và thông tin Voice Channel, hệ thống sẽ tự động kết nối và duy trì trạng thái <strong>trong phòng thoại</strong> cùng với <strong>Rich Presence</strong> tùy chỉnh – giúp bạn nổi bật và tăng cấp độ.</p>
+        </div>
     </div>
 </div>
 
@@ -563,7 +637,76 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- ====== FAQ SECTION ====== -->
+<!-- HƯỚNG DẪN SỬ DỤNG -->
+<div id="guide" class="guide-section reveal">
+    <div class="guide-title">📘 Hướng dẫn sử dụng</div>
+    <div class="guide-sub">Chỉ với 4 bước đơn giản, bạn đã có thể treo tài khoản Discord 24/7</div>
+    <div class="guide-steps">
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <h3>Đăng nhập Discord</h3>
+            <p>Bấm nút <strong>"Đăng nhập"</strong> ở góc phải trang chủ, hệ thống sẽ chuyển hướng đến Discord để xác thực.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="2.5"></rect>
+                    <line x1="6" y1="9" x2="18" y2="9"></line>
+                    <line x1="6" y1="15" x2="18" y2="15"></line>
+                    <line x1="10" y1="3" x2="10" y2="21"></line>
+                </svg>
+            </div>
+            <h3>Lấy Token Discord</h3>
+            <p>Sao chép Token của bạn từ trình duyệt (hướng dẫn chi tiết có trong phần FAQ). Token giúp hệ thống đăng nhập thay bạn.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                </svg>
+            </div>
+            <h3>Nhập thông tin</h3>
+            <p>Điền Token, ID máy chủ (Guild) và ID kênh Voice. Có thể cấu hình Rich Presence nếu muốn.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="step-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+            </div>
+            <h3>Bấm "Treo ngay"</h3>
+            <p>Nhấn nút <strong>"CHẠY NGAY"</strong> để bắt đầu. Hệ thống sẽ tự động kết nối và giữ trạng thái online mãi mãi.</p>
+        </div>
+    </div>
+</div>
+
+<!-- TREO ROOM / TREO TOOLS LÀ GÌ? -->
+<div class="explain-section reveal">
+    <div class="explain-box">
+        <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+            </svg>
+            Treo room / Treo tools là gì?
+        </h2>
+        <p><strong>Treo room</strong> (hay "treo voice") là hành động giữ tài khoản Discord của bạn ở trong một phòng thoại (Voice Channel) liên tục 24/7 mà không cần bạn phải mở ứng dụng Discord hay bật máy tính. Điều này giúp bạn <strong>luôn hiện diện</strong> trong server, tăng độ uy tín, và có thể dùng để tăng cấp độ (level) nếu server có tính năng cộng điểm khi online.</p>
+        <p><strong>Treo tools</strong> là thuật ngữ chỉ việc sử dụng các công cụ tự động (như ZaTools) để thực hiện việc treo room này một cách ổn định và an toàn, với các tính năng nâng cao như <strong>Rich Presence</strong> (hiển thị trạng thái chơi game) giúp bạn trở nên nổi bật và chuyên nghiệp hơn.</p>
+        <p>Với ZaTools, bạn có thể treo <strong>nhiều tài khoản</strong> cùng lúc (tùy gói), và hoàn toàn <strong>không lo bị ngắt kết nối</strong> nhờ cơ chế tự động kết nối lại khi có sự cố.</p>
+    </div>
+</div>
+
+<!-- FAQ -->
 <div class="faq-section reveal">
     <div class="faq-title">💬 Câu Hỏi Thường Gặp</div>
     <div class="faq-sub">Những thắc mắc phổ biến khi sử dụng ZaTools</div>
@@ -629,7 +772,7 @@ HTML_LANDING = HTML_HEAD + """
     </div>
 </div>
 
-<!-- ====== AUTHOR & CONTACT ====== -->
+<!-- AUTHOR & CONTACT -->
 <div class="author-section reveal">
     <div class="author-left">
         <img src="https://i.imgur.com/IeytfHP.jpeg" alt="ZaTools Creator" />
@@ -666,7 +809,6 @@ HTML_LANDING = HTML_HEAD + """
 
 """ + THEME_SCRIPT + """
 <script>
-    // Hiệu ứng xuất hiện
     function reveal() {
         document.querySelectorAll(".reveal").forEach(el => {
             if (el.getBoundingClientRect().top < window.innerHeight - 60) el.classList.add("active");
@@ -675,7 +817,6 @@ HTML_LANDING = HTML_HEAD + """
     window.addEventListener("scroll", reveal);
     reveal();
 
-    // Toggle FAQ
     function toggleFaq(element) {
         const item = element.closest('.faq-item');
         if (item.classList.contains('open')) {
@@ -712,7 +853,7 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== DASHBOARD CHÍNH (ĐÃ FIX ICON + UI MỚI) ==================
+# ================== DASHBOARD CHÍNH (GIỮ NGUYÊN, CHỈ CẢI THIỆN HIỂN THỊ SLOT) ==================
 HTML_MAIN = HTML_HEAD + """
 <title>ZaTools - Dashboard</title>
 <style>
@@ -752,7 +893,6 @@ HTML_MAIN = HTML_HEAD + """
     [data-theme="light"] .dropdown-menu { background: rgba(255,255,255,0.98); }
     .dropdown-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
 
-    /* ===== FIX DROPDOWN ITEM: icon không bị cắt ===== */
     .dp-item {
         display: flex;
         align-items: center;
@@ -778,7 +918,7 @@ HTML_MAIN = HTML_HEAD + """
     /* ===== CONTAINER ===== */
     .container { max-width: 700px; width: 100%; margin: 28px auto; padding: 0 14px; }
 
-    /* ===== STATS GRID - FIX ICON KHUẤT ===== */
+    /* ===== STATS GRID ===== */
     .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 22px; }
     .stat-card {
         background: var(--card-bg);
@@ -796,7 +936,6 @@ HTML_MAIN = HTML_HEAD + """
     .stat-card:hover { border-color: var(--stat-color, var(--accent)); transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
     .stat-card:hover::after { opacity: 1; }
 
-    /* FIX: stat-card h3 - icon hiển thị đầy đủ, không bị cắt */
     .stat-card h3 {
         font-size: 10px;
         color: var(--text-muted);
@@ -807,7 +946,7 @@ HTML_MAIN = HTML_HEAD + """
         display: flex;
         align-items: center;
         gap: 6px;
-        overflow: visible;  /* QUAN TRỌNG: không clip icon */
+        overflow: visible;
     }
     .stat-card h3 .svg-icon {
         width: 14px; height: 14px; min-width: 14px;
@@ -1612,23 +1751,41 @@ def start():
 @app.route('/start_saved', methods=['POST'])
 def start_saved():
     usr = session.get('username')
+    if not usr:
+        return redirect(url_for('index'))
     max_tokens, _, _ = get_user_limit(usr)
     current_running = sum(1 for v in user_bots.get(usr, {}).values() if v.get('running', False))
     prof_id = request.form.get('profile_id')
-    try: prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
-    except: prof = None
+    try:
+        prof = saved_profiles_collection.find_one({"_id": prof_id}) or saved_profiles_collection.find_one({"_id": ObjectId(prof_id)})
+    except:
+        prof = None
     if prof:
         bot_key = f"{prof.get('guild_id')}_{prof.get('channel_id')}"
-        if current_running >= max_tokens and bot_key not in user_bots.get(usr, {}):
-            session['flash_msg'] = f"Cần Mua/Gia hạn VIP để chạy! Giới hạn: {max_tokens}"
+        # Nếu token đã chạy thì không cần kiểm tra slot, nếu chưa chạy và đã đầy slot thì báo lỗi
+        if bot_key not in user_bots.get(usr, {}) and current_running >= max_tokens:
+            session['flash_msg'] = f"Bạn đã dùng hết {max_tokens} slot. Vui lòng nâng cấp gói để treo thêm!"
             session['flash_type'] = "error"
             return redirect(url_for('index', tab='saved'))
+        # Nếu bot_key đã tồn tại, ta sẽ không khởi tạo lại, hoặc có thể restart nếu muốn. Nhưng để đơn giản ta bỏ qua vì đã có cơ chế auto reconnect.
+        if bot_key in user_bots.get(usr, {}):
+            session['flash_msg'] = "Tài khoản này đã được treo rồi!"
+            session['flash_type'] = "success"
+            return redirect(url_for('index', tab='treo'))
         config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         config['bot_key'] = bot_key
         save_storage_item(bot_key, config, usr)
         if usr not in user_bots: user_bots[usr] = {}
-        if bot_key in user_bots[usr]: user_bots[usr][bot_key]['running'] = False; time.sleep(0.5)
+        # Đảm bảo không có bot cũ (nếu có) thì tắt trước khi chạy mới
+        if bot_key in user_bots[usr]:
+            user_bots[usr][bot_key]['running'] = False
+            time.sleep(0.5)
         threading.Thread(target=run_bot, args=(bot_key, config, usr), daemon=True).start()
+        session['flash_msg'] = "Đã bắt đầu treo tài khoản từ kho!"
+        session['flash_type'] = "success"
+    else:
+        session['flash_msg'] = "Không tìm thấy cấu hình!"
+        session['flash_type'] = "error"
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/save_profile', methods=['POST'])
@@ -1656,8 +1813,10 @@ def login():
 def del_prof():
     pid = request.form.get('profile_id')
     try:
-        if not saved_profiles_collection.delete_one({"_id": pid}).deleted_count: saved_profiles_collection.delete_one({"_id": ObjectId(pid)})
-    except: pass
+        if not saved_profiles_collection.delete_one({"_id": pid}).deleted_count:
+            saved_profiles_collection.delete_one({"_id": ObjectId(pid)})
+    except:
+        pass
     return redirect(url_for('index', tab='saved'))
 
 @app.route('/stop', methods=['POST'])
@@ -1683,7 +1842,8 @@ def stop_all():
     return redirect(url_for('index', tab='treo'))
 
 @app.route('/login/discord')
-def login_discord(): return redirect(OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify']).authorization_url(DISCORD_AUTH_URL)[0])
+def login_discord():
+    return redirect(OAuth2Session(DISCORD_CLIENT_ID, redirect_uri=f"{get_base_url()}/callback/discord", scope=['identify']).authorization_url(DISCORD_AUTH_URL)[0])
 
 @app.route('/callback/discord')
 def cb_discord():
@@ -1693,8 +1853,10 @@ def cb_discord():
     usr = f"{user_data.get('username')}_dc"
     user_id = user_data.get('id')
     avatar_hash = user_data.get('avatar')
-    if avatar_hash: avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-    else: avatar_url = "https://cdn.discordapp.com/embed/avatars/0.png"
+    if avatar_hash:
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
+    else:
+        avatar_url = "https://cdn.discordapp.com/embed/avatars/0.png"
     if not users_collection.find_one({"username": usr}):
         users_collection.insert_one({"username": usr, "oauth": "discord", "avatar": avatar_url, "max_tokens": 1, "expiry_date": 0, "balance": 0})
     else:
@@ -1704,18 +1866,23 @@ def cb_discord():
     return redirect(url_for('index'))
 
 @app.route('/logout')
-def logout(): session.clear(); return redirect(url_for('index'))
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
 @app.route('/ping')
-def ping(): return "ok"
+def ping():
+    return "ok"
 
 @app.route('/refresh', methods=['POST'])
-def refresh(): return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
+def refresh():
+    return redirect(url_for('index', tab=request.form.get('tab', 'treo')))
 
 @app.route('/admin_dangkhoi')
 def admin_dashboard():
     db_user = users_collection.find_one({"username": session.get('username')})
-    if not db_user or not db_user.get('is_admin'): return redirect(url_for('index'))
+    if not db_user or not db_user.get('is_admin'):
+        return redirect(url_for('index'))
     total_users = users_collection.count_documents({})
     total_bots = accounts_collection.count_documents({})
     active_running = sum(1 for usr, bots in user_bots.items() for k, d in bots.items() if d.get('running', False))
@@ -1729,7 +1896,8 @@ def admin_dashboard():
 @app.route('/admin_action', methods=['POST'])
 def admin_action():
     db_user = users_collection.find_one({"username": session.get('username')})
-    if not db_user or not db_user.get('is_admin'): return redirect(url_for('index'))
+    if not db_user or not db_user.get('is_admin'):
+        return redirect(url_for('index'))
     action = request.form.get('action')
     if action == 'add_coin':
         t_user = request.form.get('target_user').strip().lower()
@@ -1749,10 +1917,12 @@ def admin_action():
             if 'transactions' in data:
                 for t in data['transactions']:
                     tid = str(t['id']); amt = int(float(t['amount_in'])); content = t['transaction_content']
-                    if process_sepay_transaction(tid, amt, content): synced_count += 1
+                    if process_sepay_transaction(tid, amt, content):
+                        synced_count += 1
             session['admin_msg'] = f"Đồng bộ hoàn tất! Cộng bù {synced_count} giao dịch bị sót."
         except Exception as e:
             session['admin_msg'] = f"Lỗi đồng bộ: {str(e)}"
     return redirect(url_for('admin_dashboard'))
 
-if __name__ == '__main__': app.run(host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
