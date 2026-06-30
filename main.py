@@ -72,7 +72,7 @@ def process_sepay_transaction(tid, amount, raw_content):
                 return True
     return False
 
-# ================== CSS GLOBAL (ĐÃ FIX ICON + UI ĐẸP HƠN) ==================
+# ================== CSS GLOBAL ==================
 HTML_HEAD = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -280,14 +280,12 @@ TG_FLOAT_BTN = """
 </a>
 """
 
-# ================== LANDING PAGE MỚI (CÓ HƯỚNG DẪN, GIỚI THIỆU, FAQ, ICON TỰ VẼ) ==================
+# ================== LANDING PAGE ==================
 HTML_LANDING = HTML_HEAD + """
 <title>ZaTools - Nền Tảng Giữ Discord Luôn Online</title>
 <style>
-    /* ====== RESET & CƠ BẢN ====== */
     .reveal { opacity: 0; transform: translateY(40px); transition: 0.8s all cubic-bezier(0.5, 0, 0, 1); }
     .reveal.active { opacity: 1; transform: translateY(0); }
-
     .landing-nav {
         display: flex; justify-content: space-between; align-items: center;
         padding: 18px 5%;
@@ -304,7 +302,6 @@ HTML_LANDING = HTML_HEAD + """
         border: none;
     }
     .landing-nav-btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,255,0.4); }
-
     .hero {
         text-align: center; padding: 110px 20px 80px; max-width: 820px; margin: 0 auto;
     }
@@ -317,7 +314,6 @@ HTML_LANDING = HTML_HEAD + """
     }
     .hero-badge-dot { width: 7px; height: 7px; background: var(--success-text); border-radius: 50%; box-shadow: 0 0 8px var(--success-text); animation: blink 1.5s infinite; }
     @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
-
     .hero h1 { font-size: 54px; font-weight: 900; line-height: 1.1; margin-bottom: 22px; letter-spacing: -2px; }
     .hero h1 .gradient-text {
         background: linear-gradient(135deg, #00c8ff 0%, #7c3aed 60%, #a855f7 100%);
@@ -326,7 +322,6 @@ HTML_LANDING = HTML_HEAD + """
     }
     .hero p { font-size: 17px; color: var(--text-muted); line-height: 1.7; margin-bottom: 42px; max-width: 600px; margin-left: auto; margin-right: auto; }
     .hero-btns { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
-
     .hero-btn-primary {
         background: #5865F2; color: #fff; padding: 15px 30px; border-radius: 14px;
         font-weight: 800; font-size: 15px; text-decoration: none; transition: 0.3s;
@@ -340,7 +335,6 @@ HTML_LANDING = HTML_HEAD + """
         border: 1px solid var(--border-light); transition: 0.3s;
     }
     .hero-btn-secondary:hover { background: rgba(255,255,255,0.06); border-color: var(--accent); color: var(--accent); }
-
     .stats-container { display: flex; justify-content: center; gap: 18px; margin-top: 64px; flex-wrap: wrap; }
     .stat-box {
         background: var(--card-bg); border: 1px solid var(--border-light);
@@ -350,8 +344,6 @@ HTML_LANDING = HTML_HEAD + """
     .stat-box:hover { border-color: var(--accent); box-shadow: var(--glow-accent); }
     .stat-val { font-size: 30px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
     .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
-
-    /* ====== PHẦN GIỚI THIỆU ZATOOLS ====== */
     .intro-section {
         max-width: 820px; margin: 40px auto; padding: 0 20px;
     }
@@ -371,13 +363,10 @@ HTML_LANDING = HTML_HEAD + """
     .intro-text { flex: 1; }
     .intro-text h2 { font-size: 28px; font-weight: 900; margin-bottom: 12px; color: var(--text-main); }
     .intro-text p { font-size: 15px; color: var(--text-muted); line-height: 1.7; }
-
-    /* ====== FEATURES ====== */
     .features { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
     .features-eyebrow { text-align: center; color: var(--accent); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 14px; }
     .features-head h2 { font-size: 36px; font-weight: 900; margin-bottom: 14px; color: var(--text-main); text-align: center; }
     .features-head p { color: var(--text-muted); font-size: 15px; text-align: center; margin-bottom: 50px; }
-
     .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; }
     .feature-card {
         background: var(--card-bg); border: 1px solid var(--border-light);
@@ -391,7 +380,6 @@ HTML_LANDING = HTML_HEAD + """
     }
     .feature-card:hover { transform: translateY(-6px); border-color: var(--f-color, var(--accent)); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
     .feature-card:hover::before { opacity: 1; }
-
     .f-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
     .f-icon svg { width: 22px; height: 22px; overflow: visible; }
     .f-icon.pink { background: rgba(168, 85, 247, 0.12); color: #a855f7; --f-color: #a855f7; }
@@ -400,8 +388,6 @@ HTML_LANDING = HTML_HEAD + """
     .f-icon.yellow { background: rgba(245, 197, 24, 0.12); color: #f5c518; --f-color: #f5c518; }
     .feature-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--text-main); }
     .feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
-
-    /* ====== HƯỚNG DẪN SỬ DỤNG ====== */
     .guide-section {
         max-width: 900px; margin: 60px auto; padding: 0 20px;
     }
@@ -427,8 +413,6 @@ HTML_LANDING = HTML_HEAD + """
     .step-icon { font-size: 32px; margin-bottom: 12px; display: block; color: var(--accent); }
     .step-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; color: var(--text-main); }
     .step-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
-
-    /* ====== TREO ROOM / TREO TOOLS LÀ GÌ? ====== */
     .explain-section {
         max-width: 820px; margin: 60px auto; padding: 0 20px;
     }
@@ -440,8 +424,6 @@ HTML_LANDING = HTML_HEAD + """
     .explain-box h2 { font-size: 28px; font-weight: 900; margin-bottom: 16px; color: var(--text-main); display: flex; align-items: center; gap: 12px; }
     .explain-box h2 svg { width: 32px; height: 32px; color: var(--accent); stroke-width: 1.5; }
     .explain-box p { font-size: 15px; color: var(--text-muted); line-height: 1.8; margin-bottom: 12px; }
-
-    /* ====== FAQ (giữ nguyên) ====== */
     .faq-section {
         max-width: 820px; margin: 60px auto; padding: 0 20px;
     }
@@ -475,8 +457,6 @@ HTML_LANDING = HTML_HEAD + """
     .faq-item.open .faq-answer {
         max-height: 300px; padding: 0 20px 20px 20px;
     }
-
-    /* ====== AUTHOR & CONTACT ====== */
     .author-section {
         max-width: 820px; margin: 80px auto 40px; padding: 0 20px;
         display: flex; flex-wrap: wrap; gap: 30px;
@@ -510,7 +490,6 @@ HTML_LANDING = HTML_HEAD + """
     .social-link.telegram { border-color: #0088cc; }
     .social-link.telegram:hover { background: rgba(0,136,204,0.12); color: #0088cc; border-color: #0088cc; }
     .social-link svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
-
     .contact-info {
         display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;
         margin-top: 10px; font-size: 13px; color: var(--text-muted);
@@ -518,9 +497,7 @@ HTML_LANDING = HTML_HEAD + """
     .contact-info .label { font-weight: 700; color: var(--text-main); }
     .contact-info a { color: var(--accent); text-decoration: none; }
     .contact-info a:hover { text-decoration: underline; }
-
     .footer { text-align: center; padding: 40px 20px; border-top: 1px solid var(--border-light); margin-top: 40px; color: var(--text-muted); font-size: 13px; }
-
     @media (max-width: 600px) {
         .hero h1 { font-size: 34px; }
         .hero p { font-size: 14px; }
@@ -536,9 +513,7 @@ HTML_LANDING = HTML_HEAD + """
 </style>
 </head>
 <body>
-
 """ + TG_FLOAT_BTN + """
-
 <nav class="landing-nav">
     <a href="/" class="logo">
         <svg class="logo-icon svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -551,8 +526,6 @@ HTML_LANDING = HTML_HEAD + """
         <a href="/login/discord" class="landing-nav-btn">Đăng nhập</a>
     </div>
 </nav>
-
-<!-- HERO -->
 <div class="hero reveal">
     <div class="hero-badge"><span class="hero-badge-dot"></span> Hoạt động mượt mà 24/7</div>
     <h1>Giữ Discord của bạn<br><span class="gradient-text">Luôn Online & Đẳng Cấp</span></h1>
@@ -564,15 +537,12 @@ HTML_LANDING = HTML_HEAD + """
         </a>
         <a href="#guide" class="hero-btn-secondary">Hướng dẫn sử dụng ↓</a>
     </div>
-
     <div class="stats-container">
         <div class="stat-box"><div class="stat-val">500+</div><div class="stat-label">Người dùng</div></div>
         <div class="stat-box"><div class="stat-val">99.9%</div><div class="stat-label">Uptime</div></div>
         <div class="stat-box"><div class="stat-val">24/7</div><div class="stat-label">Hoạt động</div></div>
     </div>
 </div>
-
-<!-- GIỚI THIỆU ZATOOLS -->
 <div class="intro-section reveal">
     <div class="intro-box">
         <div class="intro-icon">
@@ -587,8 +557,6 @@ HTML_LANDING = HTML_HEAD + """
         </div>
     </div>
 </div>
-
-<!-- FEATURES -->
 <div id="features" class="features reveal">
     <div class="features-head">
         <div class="features-eyebrow">CHÚNG TÔI CUNG CẤP GÌ</div>
@@ -636,8 +604,6 @@ HTML_LANDING = HTML_HEAD + """
         </div>
     </div>
 </div>
-
-<!-- HƯỚNG DẪN SỬ DỤNG -->
 <div id="guide" class="guide-section reveal">
     <div class="guide-title">📘 Hướng dẫn sử dụng</div>
     <div class="guide-sub">Chỉ với 4 bước đơn giản, bạn đã có thể treo tài khoản Discord 24/7</div>
@@ -689,8 +655,6 @@ HTML_LANDING = HTML_HEAD + """
         </div>
     </div>
 </div>
-
-<!-- TREO ROOM / TREO TOOLS LÀ GÌ? -->
 <div class="explain-section reveal">
     <div class="explain-box">
         <h2>
@@ -705,12 +669,9 @@ HTML_LANDING = HTML_HEAD + """
         <p>Với ZaTools, bạn có thể treo <strong>nhiều tài khoản</strong> cùng lúc (tùy gói), và hoàn toàn <strong>không lo bị ngắt kết nối</strong> nhờ cơ chế tự động kết nối lại khi có sự cố.</p>
     </div>
 </div>
-
-<!-- FAQ -->
 <div class="faq-section reveal">
     <div class="faq-title">💬 Câu Hỏi Thường Gặp</div>
     <div class="faq-sub">Những thắc mắc phổ biến khi sử dụng ZaTools</div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>🔒 Token của tôi có được bảo mật không?</span>
@@ -720,7 +681,6 @@ HTML_LANDING = HTML_HEAD + """
             <strong>ZaTools</strong> không lưu trữ token Discord của bạn trên máy chủ dưới dạng văn bản thuần túy. Mọi quá trình xác thực đều thông qua OAuth2 và token được mã hóa. Bạn hoàn toàn có thể yên tâm về tính bảo mật.
         </div>
     </div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>🤔 Discord account token là gì?</span>
@@ -730,7 +690,6 @@ HTML_LANDING = HTML_HEAD + """
             Token Discord là một chuỗi ký tự đặc biệt dùng để xác thực tài khoản của bạn với API Discord. Nó giống như mật khẩu phiên, cho phép ứng dụng (như ZaTools) thực hiện các tác vụ thay mặt bạn mà không cần đăng nhập lại.
         </div>
     </div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>📊 Tôi có thể treo nhiều tài khoản cùng lúc không?</span>
@@ -740,7 +699,6 @@ HTML_LANDING = HTML_HEAD + """
             Có! Tùy vào gói dịch vụ của bạn (Free, Starter, Pro, VIP) mà số lượng token được phép treo khác nhau. Gói VIP cho phép lên đến 35 token cùng lúc.
         </div>
     </div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>🔄 Chuyện gì xảy ra khi tôi tắt trình duyệt?</span>
@@ -750,7 +708,6 @@ HTML_LANDING = HTML_HEAD + """
             Các phiên treo token chạy hoàn toàn trên máy chủ đám mây của ZaTools, vì vậy bạn có thể tắt trình duyệt hoặc tắt máy tính mà các tài khoản vẫn duy trì trạng thái online 24/7.
         </div>
     </div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>⚠️ Tại sao trạng thái báo "Đang kết nối lại"?</span>
@@ -760,7 +717,6 @@ HTML_LANDING = HTML_HEAD + """
             Khi mạng không ổn định hoặc Discord gặp sự cố, hệ thống sẽ tự động thử kết nối lại sau 5 giây. Bạn không cần làm gì cả, quá trình diễn ra tự động và trạng thái sẽ nhanh chóng trở lại bình thường.
         </div>
     </div>
-
     <div class="faq-item">
         <div class="faq-question" onclick="toggleFaq(this)">
             <span>🚫 Tài khoản của tôi có bị khóa không?</span>
@@ -771,8 +727,6 @@ HTML_LANDING = HTML_HEAD + """
         </div>
     </div>
 </div>
-
-<!-- AUTHOR & CONTACT -->
 <div class="author-section reveal">
     <div class="author-left">
         <img src="https://i.imgur.com/IeytfHP.jpeg" alt="ZaTools Creator" />
@@ -797,8 +751,6 @@ HTML_LANDING = HTML_HEAD + """
         </div>
     </div>
 </div>
-
-<!-- FOOTER -->
 <div class="footer reveal">
     <p>&copy; 2026 ZaTools Premium — Developed by Dang Khoi</p>
     <p style="color: var(--success-text); margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:700;">
@@ -806,7 +758,6 @@ HTML_LANDING = HTML_HEAD + """
         All systems operational
     </p>
 </div>
-
 """ + THEME_SCRIPT + """
 <script>
     function reveal() {
@@ -816,14 +767,11 @@ HTML_LANDING = HTML_HEAD + """
     }
     window.addEventListener("scroll", reveal);
     reveal();
-
     function toggleFaq(element) {
         const item = element.closest('.faq-item');
         if (item.classList.contains('open')) {
             item.classList.remove('open');
         } else {
-            // Đóng tất cả các item khác (tuỳ chọn)
-            // document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
             item.classList.add('open');
         }
     }
@@ -853,11 +801,10 @@ HTML_AUTH = HTML_HEAD + """
 </html>
 """
 
-# ================== DASHBOARD CHÍNH (GIỮ NGUYÊN, CHỈ CẢI THIỆN HIỂN THỊ SLOT) ==================
+# ================== DASHBOARD CHÍNH ==================
 HTML_MAIN = HTML_HEAD + """
 <title>ZaTools - Dashboard</title>
 <style>
-    /* ===== NAVBAR ===== */
     .navbar {
         display: flex; justify-content: space-between; align-items: center;
         padding: 14px 5%;
@@ -867,7 +814,6 @@ HTML_MAIN = HTML_HEAD + """
         position: sticky; top: 0; z-index: 1000;
     }
     .nav-right { display: flex; align-items: center; gap: 12px; position: relative; }
-
     .user-menu-btn {
         display: flex; align-items: center; gap: 10px;
         background: var(--card-bg);
@@ -878,8 +824,6 @@ HTML_MAIN = HTML_HEAD + """
     .user-menu-btn:hover { border-color: var(--accent); background: var(--accent-hover); }
     .avatar-img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
     .user-name { font-size: 13px; font-weight: 700; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    /* ===== DROPDOWN ===== */
     .dropdown-menu {
         position: absolute; top: 52px; right: 0;
         background: rgba(8,16,36,0.98);
@@ -892,7 +836,6 @@ HTML_MAIN = HTML_HEAD + """
     }
     [data-theme="light"] .dropdown-menu { background: rgba(255,255,255,0.98); }
     .dropdown-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
-
     .dp-item {
         display: flex;
         align-items: center;
@@ -914,11 +857,7 @@ HTML_MAIN = HTML_HEAD + """
     .dp-item:hover, .dp-item.active-tab { background: var(--accent-hover); color: var(--accent); }
     .dp-logout { color: var(--danger-text); border-top: 1px dashed rgba(255,68,88,0.15); margin-top: 6px; padding-top: 10px; border-radius: 0; }
     .dp-logout:hover { background: rgba(255, 68, 88, 0.08); color: var(--danger-text); border-radius: 12px; }
-
-    /* ===== CONTAINER ===== */
     .container { max-width: 700px; width: 100%; margin: 28px auto; padding: 0 14px; }
-
-    /* ===== STATS GRID ===== */
     .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 22px; }
     .stat-card {
         background: var(--card-bg);
@@ -935,7 +874,6 @@ HTML_MAIN = HTML_HEAD + """
     }
     .stat-card:hover { border-color: var(--stat-color, var(--accent)); transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
     .stat-card:hover::after { opacity: 1; }
-
     .stat-card h3 {
         font-size: 10px;
         color: var(--text-muted);
@@ -960,8 +898,6 @@ HTML_MAIN = HTML_HEAD + """
     .stat-card.accent-coin { --stat-color: var(--coin-color); }
     .stat-card.accent-success { --stat-color: var(--success-text); }
     .stat-card.accent-purple { --stat-color: var(--plan-text); }
-
-    /* ===== CARDS ===== */
     .card {
         background: var(--card-bg);
         backdrop-filter: blur(16px);
@@ -976,8 +912,6 @@ HTML_MAIN = HTML_HEAD + """
         display: flex; align-items: center; justify-content: space-between;
         border-bottom: 1px solid var(--border-light); padding-bottom: 14px;
     }
-
-    /* ===== INPUTS ===== */
     .input-group { margin-bottom: 14px; }
     .input-group label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
     .input-group input {
@@ -988,8 +922,6 @@ HTML_MAIN = HTML_HEAD + """
     }
     .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-hover); }
     .input-group input::placeholder { color: var(--text-muted); opacity: 0.7; }
-
-    /* ===== BUTTONS ===== */
     .btn {
         width: 100%; padding: 13px; border-radius: 12px; font-weight: 800; font-size: 12px;
         cursor: pointer; text-align: center; border: none; transition: 0.2s;
@@ -1006,13 +938,9 @@ HTML_MAIN = HTML_HEAD + """
     .btn-buy:hover { background: rgba(245, 197, 24, 0.18); }
     .btn-flex { display: flex; gap: 10px; }
     .btn-flex .btn { flex: 1; }
-
-    /* ===== TAB SYSTEM ===== */
     .tab-content { display: none; animation: fadeIn 0.3s; }
     .tab-content.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* ===== RPC SECTION ===== */
     .rpc-section {
         border: 1px dashed rgba(0, 200, 255, 0.25);
         padding: 18px; border-radius: 14px; margin-bottom: 14px;
@@ -1026,8 +954,6 @@ HTML_MAIN = HTML_HEAD + """
     .rpc-title .svg-icon { width: 13px; height: 13px; min-width: 13px; overflow: visible; }
     .input-row { display: flex; gap: 10px; }
     .input-row .input-group { flex: 1; }
-
-    /* ===== SWITCHES ===== */
     .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0; }
     .switch-wrap {
         display: flex; align-items: center; justify-content: space-between;
@@ -1041,8 +967,6 @@ HTML_MAIN = HTML_HEAD + """
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #fff; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--accent); }
     input:checked + .slider:before { transform: translateX(18px); }
-
-    /* ===== ACCOUNT CARDS ===== */
     .account-card {
         background: rgba(255,255,255,0.02);
         border-radius: 14px; padding: 14px 16px;
@@ -1057,8 +981,6 @@ HTML_MAIN = HTML_HEAD + """
         display: flex; align-items: center; gap: 7px;
     }
     .account-card .name .svg-icon { width: 15px; height: 15px; min-width: 15px; overflow: visible; color: var(--accent); }
-
-    /* ===== LOG BOX ===== */
     .log-box {
         background: rgba(0,0,0,0.5); border-radius: 14px; padding: 15px;
         max-height: 240px; overflow-y: auto;
@@ -1069,8 +991,6 @@ HTML_MAIN = HTML_HEAD + """
     .log-box::-webkit-scrollbar { width: 4px; }
     .log-box::-webkit-scrollbar-track { background: transparent; }
     .log-box::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
-
-    /* ===== PLAN BOXES ===== */
     .tab-header {
         display: flex; gap: 8px; margin-bottom: 18px;
         background: rgba(255,255,255,0.02); padding: 5px; border-radius: 14px;
@@ -1078,41 +998,71 @@ HTML_MAIN = HTML_HEAD + """
     }
     .tab-btn { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer; border-radius: 10px; transition: 0.3s; letter-spacing: 0.5px; text-transform: uppercase; }
     .tab-btn.active { background: var(--btn-bg); color: #fff; box-shadow: 0 4px 12px rgba(0,200,255,0.2); }
-
-    .plan-box {
-        background: rgba(255,255,255,0.02); border: 1px solid var(--input-border);
-        border-radius: 16px; padding: 20px; margin-bottom: 14px; text-align: center; transition: 0.3s;
+    .plan-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-top: 10px;
     }
-    .plan-box:hover { transform: translateY(-3px); border-color: var(--coin-color); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    .plan-title { font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
-    .plan-price { font-size: 26px; font-weight: 900; color: var(--text-main); margin-bottom: 12px; }
-    .plan-feature { font-size: 12px; color: var(--text-main); margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .plan-vip { border-color: rgba(168, 85, 247, 0.4); }
-    .plan-vip .plan-title { color: var(--plan-text); }
-
-    /* ===== OVERLAY ===== */
+    .plan-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--input-border);
+        border-radius: 18px;
+        padding: 20px 16px;
+        text-align: center;
+        transition: 0.3s;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(4px);
+    }
+    .plan-card:hover { transform: translateY(-6px); border-color: var(--accent); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+    .plan-card .plan-badge {
+        position: absolute; top: 8px; right: 8px;
+        background: var(--accent2); color: #fff;
+        font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 20px;
+        text-transform: uppercase;
+    }
+    .plan-card .plan-title {
+        font-size: 18px; font-weight: 900; color: var(--text-main); margin-bottom: 4px;
+    }
+    .plan-card .plan-price {
+        font-size: 26px; font-weight: 900; color: var(--coin-color); margin: 8px 0;
+    }
+    .plan-card .plan-price small {
+        font-size: 13px; font-weight: 600; color: var(--text-muted);
+    }
+    .plan-card .plan-features {
+        list-style: none; text-align: left; margin: 12px 0; padding: 0;
+        font-size: 12px; color: var(--text-muted); line-height: 1.8;
+    }
+    .plan-card .plan-features li {
+        display: flex; align-items: center; gap: 8px;
+    }
+    .plan-card .plan-features .svg-icon {
+        width: 14px; height: 14px; min-width: 14px;
+        stroke-width: 2.5;
+        color: var(--success-text);
+    }
+    .plan-card .btn { width: 100%; margin-top: 10px; }
+    .plan-card.vip { border-color: var(--plan-text); background: rgba(168,85,247,0.05); }
+    .plan-card.vip .plan-badge { background: var(--plan-text); }
+    .plan-card.pro { border-color: var(--accent); background: rgba(0,200,255,0.04); }
     .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 999; display: none; backdrop-filter: blur(2px); }
     .overlay.active { display: block; }
-
-    /* ===== FOOTER ===== */
     .footer { text-align: center; margin-top: 40px; padding-bottom: 100px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
-
-    /* ===== MOBILE ===== */
     @media (max-width: 600px) {
         .account-card { flex-direction: column; align-items: flex-start; gap: 12px; }
         .account-card > div:last-child { width: 100%; display: flex; gap: 8px; }
         .account-card form { flex: 1; display: flex; }
         .account-card .btn { width: 100%; justify-content: center; }
         .input-row { flex-direction: column; gap: 0; }
+        .plan-grid { grid-template-columns: 1fr; }
     }
 </style>
 </head>
 <body>
-
 <div class="overlay" id="mobileOverlay" onclick="toggleDropdown()"></div>
-
 """ + TG_FLOAT_BTN + """
-
 <nav class="navbar">
     <a href="/" class="logo">
         <svg class="logo-icon svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -1153,7 +1103,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 </nav>
-
 <div class="container">
     {% if flash_msg %}
     <div class="msg {{ flash_type }}">
@@ -1165,8 +1114,6 @@ HTML_MAIN = HTML_HEAD + """
         {{ flash_msg }}
     </div>
     {% endif %}
-
-    <!-- STATS GRID -->
     <div class="stats-grid">
         <div class="stat-card accent-success">
             <h3>
@@ -1197,8 +1144,6 @@ HTML_MAIN = HTML_HEAD + """
             <h2 class="highlight">{{ plan_name }}</h2>
         </div>
     </div>
-
-    <!-- TAB TREO -->
     <div id="tab-treo" class="tab-content active">
         <form method="POST">
             <div class="card">
@@ -1207,7 +1152,6 @@ HTML_MAIN = HTML_HEAD + """
                 <div class="input-group"><label>Discord Token</label><input type="text" name="token" required placeholder="Nhập Token của bạn..."></div>
                 <div class="input-group"><label>ID Máy chủ</label><input type="text" name="guild_id" required placeholder="1234567890..."></div>
                 <div class="input-group"><label>ID Kênh Voice</label><input type="text" name="channel_id" required placeholder="1234567890..."></div>
-
                 <div class="rpc-section">
                     <div class="rpc-title">
                         <svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -1228,14 +1172,12 @@ HTML_MAIN = HTML_HEAD + """
                         <div class="input-group"><label>Link Nút 2</label><input type="text" name="rpc_b2_url" placeholder="https://..."></div>
                     </div>
                 </div>
-
                 <div class="options-grid">
                     <div class="switch-wrap"><div class="switch-label">Tắt Mic</div><label class="switch"><input type="checkbox" name="mute" checked><span class="slider"></span></label></div>
                     <div class="switch-wrap"><div class="switch-label">Tắt Âm</div><label class="switch"><input type="checkbox" name="deaf" checked><span class="slider"></span></label></div>
                     <div class="switch-wrap"><div class="switch-label">Cam Ảo</div><label class="switch"><input type="checkbox" name="video"><span class="slider"></span></label></div>
                     <div class="switch-wrap"><div class="switch-label">Live Ảo</div><label class="switch"><input type="checkbox" name="stream"><span class="slider"></span></label></div>
                 </div>
-
                 <div class="btn-flex">
                     <button type="submit" formaction="/start" class="btn btn-primary">
                         <svg class="svg-icon" viewBox="0 0 24 24" style="width:14px;height:14px;overflow:visible;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -1248,7 +1190,6 @@ HTML_MAIN = HTML_HEAD + """
                 </div>
             </div>
         </form>
-
         <div class="card">
             <div class="card-title">
                 Phiên Đang Chạy
@@ -1277,7 +1218,6 @@ HTML_MAIN = HTML_HEAD + """
             {% endfor %}
             {% if not bot_items %}<div style="font-size:12px; color:var(--text-muted); text-align:center; padding: 15px 0;">Chưa có phiên nào hoạt động.</div>{% endif %}
         </div>
-
         <div class="card">
             <div class="card-title">
                 Live Terminal
@@ -1289,8 +1229,6 @@ HTML_MAIN = HTML_HEAD + """
             <div class="log-box" id="live-log-box">Đang kết nối hệ thống...</div>
         </div>
     </div>
-
-    <!-- TAB KHO DỮ LIỆU -->
     <div id="tab-saved" class="tab-content">
         <div class="card">
             <div class="card-title">Kho Dữ Liệu Cá Nhân</div>
@@ -1319,14 +1257,11 @@ HTML_MAIN = HTML_HEAD + """
             {% if not saved_profiles %}<div style="text-align:center; font-size:12px; color:var(--text-muted); padding: 22px 0;">Kho trống. Hãy lưu cấu hình ở tab Thiết Lập Treo!</div>{% endif %}
         </div>
     </div>
-
-    <!-- TAB NẠP & MUA GÓI -->
     <div id="tab-premium" class="tab-content">
         <div class="tab-header">
             <div class="tab-btn active" id="btn-nap" onclick="switchSubTab('nap')">NẠP COIN</div>
             <div class="tab-btn" id="btn-mua" onclick="switchSubTab('mua')">CỬA HÀNG GÓI</div>
         </div>
-
         <div id="sub-nap" class="card">
             <div class="card-title" style="color: var(--coin-color);">NẠP SỐ DƯ (1 VNĐ = 1 COIN)</div>
             <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:15px;">Quét QR chuyển khoản. Tiền vào ví tự động sau ~5 giây.</p>
@@ -1341,32 +1276,59 @@ HTML_MAIN = HTML_HEAD + """
                 <div id="payment_status" class="msg" style="display:none; margin-top:14px; background:rgba(245, 197, 24, 0.08); color:var(--coin-color); border:1px solid rgba(245, 197, 24, 0.25);">⏳ Đang chờ ngân hàng xử lý...</div>
             </div>
         </div>
-
         <div id="sub-mua" class="card" style="display: none;">
-            <div class="card-title" style="color: var(--plan-text);">MUA GÓI (30 NGÀY)</div>
-            <div style="display:grid; gap:12px;">
-                <div class="plan-box" style="margin:0;">
-                    <div class="plan-title">GÓI STARTER</div>
-                    <div class="plan-price">20,000đ</div>
-                    <div class="plan-feature">✓ Treo tối đa 2 Token</div>
-                    <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="STARTER"><button type="submit" class="btn btn-buy">MUA BẰNG COIN</button></form>
+            <div class="card-title" style="color: var(--plan-text);">🎁 CHỌN GÓI CƯỚC PHÙ HỢP</div>
+            <p style="font-size:13px; color:var(--text-muted); text-align:center; margin-bottom:20px;">
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px;height:16px;color:var(--coin-color);"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                Thanh toán bằng Coin trong ví. Mua 1 lần dùng 30 ngày.
+            </p>
+            <div class="plan-grid">
+                <div class="plan-card">
+                    <div class="plan-title">STARTER</div>
+                    <div class="plan-price">20,000<small>đ</small></div>
+                    <ul class="plan-features">
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Treo tối đa 2 Token</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Full RPC (Game, button, ảnh)</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Hỗ trợ cơ bản</li>
+                    </ul>
+                    <form method="POST" action="/buy_plan">
+                        <input type="hidden" name="plan" value="STARTER">
+                        <button type="submit" class="btn btn-buy">MUA NGAY</button>
+                    </form>
                 </div>
-                <div class="plan-box" style="margin:0; border-color:var(--accent);">
-                    <div class="plan-title" style="color:var(--accent);">GÓI PRO</div>
-                    <div class="plan-price">40,000đ</div>
-                    <div class="plan-feature">✓ Treo tối đa 5 Token</div>
-                    <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="PRO"><button type="submit" class="btn btn-buy">MUA BẰNG COIN</button></form>
+                <div class="plan-card pro">
+                    <span class="plan-badge">⭐ TIẾT KIỆM HƠN</span>
+                    <div class="plan-title">PRO</div>
+                    <div class="plan-price">40,000<small>đ</small></div>
+                    <ul class="plan-features">
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Treo tối đa 5 Token</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Full RPC + ưu tiên xử lý</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Hỗ trợ ưu tiên</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Tiết kiệm 25% so với Starter x2.5</li>
+                    </ul>
+                    <form method="POST" action="/buy_plan">
+                        <input type="hidden" name="plan" value="PRO">
+                        <button type="submit" class="btn" style="background:var(--accent); color:#fff;">MUA PRO</button>
+                    </form>
                 </div>
-                <div class="plan-box plan-vip" style="margin:0;">
-                    <div class="plan-title">GÓI VIP</div>
-                    <div class="plan-price">300,000đ</div>
-                    <div class="plan-feature">✓ Treo tối đa 35 Token</div>
-                    <form method="POST" action="/buy_plan"><input type="hidden" name="plan" value="VIP"><button type="submit" class="btn" style="margin-top:12px; background:var(--btn-bg2); color:#fff; width:100%;">MUA GÓI VIP</button></form>
+                <div class="plan-card vip">
+                    <span class="plan-badge">🔥 SIÊU TIẾT KIỆM</span>
+                    <div class="plan-title">VIP</div>
+                    <div class="plan-price">300,000<small>đ</small></div>
+                    <ul class="plan-features">
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Treo tối đa 35 Token</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Full RPC + ưu tiên tối đa</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Hỗ trợ VIP 24/7</li>
+                        <li><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Tiết kiệm 57% so với Starter, 40% so với Pro</li>
+                    </ul>
+                    <form method="POST" action="/buy_plan">
+                        <input type="hidden" name="plan" value="VIP">
+                        <button type="submit" class="btn" style="background:var(--btn-bg2); color:#fff;">MUA VIP</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-
     <div class="footer">
         <div>&copy; 2026 ZaTools Premium — Developed by Dang Khoi</div>
         <div style="color: var(--success-text); display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; font-size:11px; font-weight:700;">
@@ -1378,7 +1340,6 @@ HTML_MAIN = HTML_HEAD + """
         </div>
     </div>
 </div>
-
 """ + THEME_SCRIPT + """
 <style>
     @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
@@ -1489,12 +1450,10 @@ HTML_ADMIN = HTML_HEAD + """
         BẢNG ĐIỀU KHIỂN
     </h2>
     {% if msg %}<div class="msg success" style="display:flex; align-items:center; gap:8px; padding:12px 16px; background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.2); border-radius:12px; color:var(--success-text); font-size:13px; font-weight:600; margin-bottom:16px;">{{ msg }}</div>{% endif %}
-
     <div class="stat-box">Khách hàng: <span class="stat-val">{{ stats.users }}</span></div>
     <div class="stat-box">Token đang lưu: <span class="stat-val">{{ stats.bots }}</span></div>
     <div class="stat-box">Luồng cày ngầm: <span class="stat-val" style="color:var(--success-text);">{{ stats.running }}</span></div>
     <div class="stat-box">Doanh thu: <span class="stat-val" style="color:var(--coin-color);">{{ "{:,}".format(stats.total_money) }} đ</span></div>
-
     <div class="action-box">
         <h3>Cộng tiền thủ công</h3>
         <form method="POST" action="/admin_action">
@@ -1520,7 +1479,7 @@ HTML_ADMIN = HTML_HEAD + """
 </html>
 """
 
-# ================== BOT LOGIC (GIỮ NGUYÊN) ==================
+# ================== BOT LOGIC (ĐÃ SỬA LỖI AUTHENTICATION) ==================
 def run_bot(bot_key, config, username):
     token = config.get('token')
     guild_id = config.get('guild_id')
@@ -1529,19 +1488,31 @@ def run_bot(bot_key, config, username):
     deaf = str(config.get('deaf', 'False')).lower() in ['true', 'on', '1']
     video = str(config.get('video', 'False')).lower() in ['true', 'on', '1']
     stream = str(config.get('stream', 'False')).lower() in ['true', 'on', '1']
-    ws = None; last_seq = None; heartbeat_interval = 41250; connected = False
+    ws = None
+    last_seq = None
+    heartbeat_interval = 41250
+    connected = False
+    authenticated = False
     start_time = int(time.time() * 1000)
-    if username not in user_bots: user_bots[username] = {}
+
+    if username not in user_bots:
+        user_bots[username] = {}
     user_bots[username][bot_key] = {'connected': False, 'log': [], 'running': True, 'display_name': 'Đang kết nối...'}
+
     def add_log(msg):
         if username in user_bots and bot_key in user_bots[username]:
             timestamp = time.strftime('%H:%M:%S')
             user_bots[username][bot_key]['log'].append(f"[{timestamp}] {msg}")
-            if len(user_bots[username][bot_key]['log']) > 50: user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
+            if len(user_bots[username][bot_key]['log']) > 50:
+                user_bots[username][bot_key]['log'] = user_bots[username][bot_key]['log'][-50:]
+
     def update_status(st):
-        if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['connected'] = st
+        if username in user_bots and bot_key in user_bots[username]:
+            user_bots[username][bot_key]['connected'] = st
+
     def send_voice_update(ws_client, init_stream=False):
-        if not ws_client or not ws_client.keep_running: return
+        if not ws_client or not ws_client.keep_running:
+            return
         try:
             ws_client.send(json.dumps({"op": 4, "d": {"guild_id": guild_id, "channel_id": channel_id, "self_mute": mute, "self_deaf": deaf, "self_video": video}}))
             if stream and init_stream:
@@ -1550,104 +1521,223 @@ def run_bot(bot_key, config, username):
                         try:
                             ws_client.send(json.dumps({"op": 18, "d": {"type": "guild", "guild_id": guild_id, "channel_id": channel_id, "preferred_region": None}}))
                             add_log("🔴 Đã bung cờ Đang Trực Tiếp (Live ảo)!")
-                        except: pass
+                        except:
+                            pass
                 threading.Timer(1.5, fire_stream).start()
-        except: pass
+        except Exception as e:
+            add_log(f"⚠️ Lỗi gửi voice update: {e}")
+
     def on_message(ws_client, message):
-        nonlocal last_seq, connected, heartbeat_interval
-        try: data = json.loads(message)
-        except: return
+        nonlocal last_seq, connected, heartbeat_interval, authenticated
+        try:
+            data = json.loads(message)
+        except:
+            return
         last_seq = data.get('s', last_seq)
-        op = data.get('op'); t = data.get('t')
-        if op == 10:
+        op = data.get('op')
+        t = data.get('t')
+
+        if op == 10:  # Hello
             heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+            add_log(f"📡 Heartbeat interval: {heartbeat_interval}s")
+
+            # Kiểm tra token trước khi identify
+            try:
+                headers = {"Authorization": token}
+                r = requests.get("https://discord.com/api/v9/users/@me", headers=headers, timeout=5)
+                if r.status_code != 200:
+                    add_log(f"❌ Token không hợp lệ! (mã {r.status_code})")
+                    ws_client.close()
+                    return
+            except:
+                add_log("❌ Không thể kiểm tra token, thử kết nối...")
+
+            # Xây dựng presence
             presence_data = {"status": "online", "since": 0, "activities": [], "afk": False}
             status_text = config.get('status_text', '').strip()
             rpc_app_id = "1469298750613749934"
             if status_text:
                 activity = {"name": status_text, "type": 0, "application_id": rpc_app_id, "timestamps": {"start": start_time}}
-                if config.get('rpc_details'): activity["details"] = config.get('rpc_details')
-                if config.get('rpc_state'): activity["state"] = config.get('rpc_state')
+                if config.get('rpc_details'):
+                    activity["details"] = config.get('rpc_details')
+                if config.get('rpc_state'):
+                    activity["state"] = config.get('rpc_state')
                 rpc_image = config.get('rpc_image', '').strip()
                 if rpc_image.startswith('http'):
                     try:
-                        res = requests.post(f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets", headers={"Authorization": token, "Content-Type": "application/json"}, json={"urls": [rpc_image]}, timeout=5)
-                        if res.status_code == 200: rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
-                    except: pass
-                if rpc_image: activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
+                        res = requests.post(f"https://discord.com/api/v9/applications/{rpc_app_id}/external-assets",
+                                            headers={"Authorization": token, "Content-Type": "application/json"},
+                                            json={"urls": [rpc_image]}, timeout=5)
+                        if res.status_code == 200:
+                            rpc_image = f"mp:{res.json()[0]['external_asset_path']}"
+                    except:
+                        pass
+                if rpc_image:
+                    activity["assets"] = {"large_image": rpc_image, "large_text": status_text}
                 buttons, metadata_urls = [], []
                 if config.get('rpc_b1_name') and config.get('rpc_b1_url'):
-                    buttons.append(config.get('rpc_b1_name')); metadata_urls.append(config.get('rpc_b1_url'))
+                    buttons.append(config.get('rpc_b1_name'))
+                    metadata_urls.append(config.get('rpc_b1_url'))
                 if config.get('rpc_b2_name') and config.get('rpc_b2_url'):
-                    buttons.append(config.get('rpc_b2_name')); metadata_urls.append(config.get('rpc_b2_url'))
+                    buttons.append(config.get('rpc_b2_name'))
+                    metadata_urls.append(config.get('rpc_b2_url'))
                 if buttons:
                     activity["buttons"] = buttons
                     activity["metadata"] = {"button_urls": metadata_urls}
                 presence_data["activities"].append(activity)
                 add_log("🎨 Gắn khối Custom RPC thành công!")
-            ws_client.send(json.dumps({"op": 2, "d": {"token": token, "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"}, "presence": presence_data, "compress": False}}))
-            add_log("📤 Đã kết nối Gateway, đang tải dữ liệu...")
-        elif op == 0:
+
+            identify_payload = {
+                "op": 2,
+                "d": {
+                    "token": token,
+                    "properties": {"os": "Linux", "browser": "Chrome", "device": "ZaTools"},
+                    "presence": presence_data,
+                    "compress": False,
+                    "large_threshold": 250
+                }
+            }
+            ws_client.send(json.dumps(identify_payload))
+            add_log("📤 Đã gửi identify...")
+            authenticated = False
+
+        elif op == 0:  # Dispatch
             if t == 'READY':
+                authenticated = True
                 d_name = data['d']['user']['username']
-                if username in user_bots and bot_key in user_bots[username]: user_bots[username][bot_key]['display_name'] = d_name
+                if username in user_bots and bot_key in user_bots[username]:
+                    user_bots[username][bot_key]['display_name'] = d_name
                 add_log(f"🎯 Đăng nhập thành công: {d_name}")
                 send_voice_update(ws_client, init_stream=True)
             elif t == 'VOICE_STATE_UPDATE':
                 d = data['d']
                 if d.get('channel_id') == channel_id and not connected:
-                    connected = True; update_status(True)
+                    connected = True
+                    update_status(True)
                     add_log("✅ Đã tham gia phòng thoại vĩnh cửu!")
                 elif d.get('channel_id') is None and connected:
-                    connected = False; update_status(False)
+                    connected = False
+                    update_status(False)
                     add_log("⚠️ Bị văng khỏi phòng! Đang kết nối lại...")
                     send_voice_update(ws_client, init_stream=True)
-        elif op == 9: ws_client.close()
+
+        elif op == 9:  # Invalid session
+            d = data.get('d', False)
+            if d is False:
+                add_log("🔄 Session không hợp lệ, thử resume...")
+                if last_seq is not None:
+                    ws_client.send(json.dumps({"op": 6, "d": {"token": token, "session_id": data.get('d', {}).get('session_id'), "seq": last_seq}}))
+                else:
+                    add_log("🔄 Resume thất bại, đăng nhập lại...")
+                    ws_client.close()
+            else:
+                add_log("❌ Session bị từ chối, token không hợp lệ hoặc hết hạn! Thử lại sau 5s...")
+                authenticated = False
+                ws_client.close()
+
+        elif op == 7:  # Reconnect
+            add_log("🔁 Discord yêu cầu reconnect, đóng kết nối...")
+            ws_client.close()
+
+        elif op == 11:  # Heartbeat ACK
+            add_log("💓 Heartbeat ACK nhận thành công")
+
     def on_close(ws_client, code, msg):
-        nonlocal connected
-        if connected: connected = False; update_status(False)
-        add_log("🔌 Mất kết nối! Tự động thử lại sau 5s...")
-        time.sleep(5)
-        if username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']: start_ws()
+        nonlocal connected, authenticated
+        if connected:
+            connected = False
+            update_status(False)
+        add_log(f"🔌 Đã đóng kết nối (code {code}): {msg}")
+        if not authenticated or "Authentication failed" in msg:
+            add_log("⚠️ Lỗi xác thực, thử lại sau 10s...")
+            time.sleep(10)
+        else:
+            time.sleep(5)
+        if username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
+            start_ws()
+
     def on_error(ws_client, error):
-        if "Connection closed" not in str(error): add_log(f"💥 Lỗi: {error}")
+        if "Connection closed" not in str(error):
+            add_log(f"💥 Lỗi WebSocket: {error}")
+
     def heartbeat_loop():
         while username in user_bots and bot_key in user_bots[username] and user_bots[username][bot_key]['running']:
             time.sleep(heartbeat_interval)
             if ws and ws.keep_running:
-                try: ws.send(json.dumps({"op": 1, "d": last_seq}))
-                except: pass
+                try:
+                    ws.send(json.dumps({"op": 1, "d": last_seq}))
+                except:
+                    pass
+
     def start_ws():
-        nonlocal ws
-        if username not in user_bots or bot_key not in user_bots[username] or not user_bots[username][bot_key]['running']: return
-        try: gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
-        except: time.sleep(5); start_ws(); return
-        add_log("🚀 Khởi tạo tiến trình...")
-        ws = websocket.WebSocketApp(gateway + "/?v=9&encoding=json", on_message=on_message, on_error=on_error, on_close=on_close)
+        nonlocal ws, heartbeat_interval
+        if username not in user_bots or bot_key not in user_bots[username] or not user_bots[username][bot_key]['running']:
+            return
+        try:
+            gateway = requests.get("https://discord.com/api/v9/gateway", timeout=10).json()['url']
+        except:
+            add_log("❌ Không lấy được gateway, thử lại sau 5s...")
+            time.sleep(5)
+            start_ws()
+            return
+        add_log("🚀 Khởi tạo kết nối WebSocket...")
+        ws = websocket.WebSocketApp(
+            gateway + "/?v=9&encoding=json",
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
+        )
         threading.Thread(target=heartbeat_loop, daemon=True).start()
         ws.run_forever()
+
     start_ws()
 
 def auto_bootloader():
     try:
         for doc in accounts_collection.find():
-            username = doc.get("owner"); bot_key = doc.get("bot_key")
-            if not username or not bot_key: continue
+            username = doc.get("owner")
+            bot_key = doc.get("bot_key")
+            if not username or not bot_key:
+                continue
             limit, _, _ = get_user_limit(username)
-            if username not in user_bots: user_bots[username] = {}
-            if len(user_bots[username]) >= limit: continue
+            if username not in user_bots:
+                user_bots[username] = {}
+            if len(user_bots[username]) >= limit:
+                continue
             config = {
-                'token': doc.get('token'), 'guild_id': doc.get('guild_id'), 'channel_id': doc.get('channel_id'),
-                'status_text': doc.get('status_text', ''), 'rpc_details': doc.get('rpc_details', ''), 'rpc_state': doc.get('rpc_state', ''),
-                'rpc_image': doc.get('rpc_image', ''), 'rpc_b1_name': doc.get('rpc_b1_name', ''), 'rpc_b1_url': doc.get('rpc_b1_url', ''),
-                'rpc_b2_name': doc.get('rpc_b2_name', ''), 'rpc_b2_url': doc.get('rpc_b2_url', ''),
-                'mute': doc.get('mute'), 'deaf': doc.get('deaf'), 'video': doc.get('video'), 'stream': doc.get('stream')
+                'token': doc.get('token'),
+                'guild_id': doc.get('guild_id'),
+                'channel_id': doc.get('channel_id'),
+                'status_text': doc.get('status_text', ''),
+                'rpc_details': doc.get('rpc_details', ''),
+                'rpc_state': doc.get('rpc_state', ''),
+                'rpc_image': doc.get('rpc_image', ''),
+                'rpc_b1_name': doc.get('rpc_b1_name', ''),
+                'rpc_b1_url': doc.get('rpc_b1_url', ''),
+                'rpc_b2_name': doc.get('rpc_b2_name', ''),
+                'rpc_b2_url': doc.get('rpc_b2_url', ''),
+                'mute': doc.get('mute'),
+                'deaf': doc.get('deaf'),
+                'video': doc.get('video'),
+                'stream': doc.get('stream')
             }
-            if bot_key not in user_bots[username]: threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
-    except: pass
+            # Kiểm tra token trước khi chạy
+            try:
+                headers = {"Authorization": config['token']}
+                r = requests.get("https://discord.com/api/v9/users/@me", headers=headers, timeout=5)
+                if r.status_code != 200:
+                    print(f"⚠️ Token của {username} không hợp lệ, bỏ qua.")
+                    continue
+            except:
+                print(f"⚠️ Không thể kiểm tra token của {username}, vẫn thử chạy.")
+            if bot_key not in user_bots[username]:
+                threading.Thread(target=run_bot, args=(bot_key, config, username), daemon=True).start()
+    except Exception as e:
+        print(f"Auto bootloader error: {e}")
+
 auto_bootloader()
 
-# ================== ROUTES (GIỮ NGUYÊN LOGIC) ==================
+# ================== ROUTES ==================
 @app.route('/sepay_webhook', methods=['POST'])
 def sepay_webhook():
     try:
@@ -1761,22 +1851,22 @@ def start_saved():
     except:
         prof = None
     if prof:
-        bot_key = f"{prof.get('guild_id')}_{prof.get('channel_id')}"
-        # Nếu token đã chạy thì không cần kiểm tra slot, nếu chưa chạy và đã đầy slot thì báo lỗi
-        if bot_key not in user_bots.get(usr, {}) and current_running >= max_tokens:
-            session['flash_msg'] = f"Bạn đã dùng hết {max_tokens} slot. Vui lòng nâng cấp gói để treo thêm!"
-            session['flash_type'] = "error"
-            return redirect(url_for('index', tab='saved'))
-        # Nếu bot_key đã tồn tại, ta sẽ không khởi tạo lại, hoặc có thể restart nếu muốn. Nhưng để đơn giản ta bỏ qua vì đã có cơ chế auto reconnect.
+        token = prof.get('token', '')
+        token_prefix = token[:6] if token else 'unknown'
+        bot_key = f"{prof.get('guild_id')}_{prof.get('channel_id')}_{token_prefix}"
         if bot_key in user_bots.get(usr, {}):
             session['flash_msg'] = "Tài khoản này đã được treo rồi!"
             session['flash_type'] = "success"
             return redirect(url_for('index', tab='treo'))
+        if current_running >= max_tokens:
+            session['flash_msg'] = f"Bạn đã dùng hết {max_tokens} slot. Vui lòng nâng cấp gói để treo thêm!"
+            session['flash_type'] = "error"
+            return redirect(url_for('index', tab='saved'))
         config = {k:v for k,v in prof.items() if k not in ['_id', 'owner', 'profile_name']}
         config['bot_key'] = bot_key
         save_storage_item(bot_key, config, usr)
-        if usr not in user_bots: user_bots[usr] = {}
-        # Đảm bảo không có bot cũ (nếu có) thì tắt trước khi chạy mới
+        if usr not in user_bots:
+            user_bots[usr] = {}
         if bot_key in user_bots[usr]:
             user_bots[usr][bot_key]['running'] = False
             time.sleep(0.5)
